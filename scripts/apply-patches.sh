@@ -33,7 +33,9 @@ apply_submodule_patch() {
 # apply_patch "01-fix-something.patch"
 
 # CRITICAL: Remove Capacitor Updater for offline builds
-apply_patch "remove-capacitor-updater.js"
+#apply_patch "remove-capacitor-updater.js"
+
+apply_patch "externalize-capacitor-updater.js"
 
 
 echo "All patches applied successfully."
