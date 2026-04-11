@@ -46,7 +46,7 @@ jobs:
         working-directory: pokevoid-src
         env:
           VITE_BYPASS_LOGIN: '1'
-        run: pnpm build --mode app
+        run: pnpm build
 
 #      - name: Copy save file to dist
 #        run: cp pokevoid-src/full_unlocks.prsv pokevoid-src/dist/full_unlocks.prsv
