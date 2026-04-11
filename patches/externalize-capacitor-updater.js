@@ -48,7 +48,7 @@ const originalContent = content;
 // Check if already externalized
 if (content.includes("'@capgo/capacitor-updater'") || content.includes('"@capgo/capacitor-updater"')) {
   console.log(`  ℹ Already externalized, skipping`);
-  process.exit(1);
+  process.exit(0);
 }
 
 // Find the build configuration
@@ -116,4 +116,4 @@ if (content !== originalContent) {
   console.log(`  ℹ No changes needed`);
 }
 
-process.exit(1);
+process.exit(0);
