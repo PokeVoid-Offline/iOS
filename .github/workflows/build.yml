@@ -229,6 +229,7 @@ jobs:
           sed -i "s/versionName \"1.0\"/versionName \"$VERSION_NAME\"/" android/app/build.gradle
 
       - name: Configure Android app settings
+        if: false
         working-directory: pokevoid-src
         run: |
           # Set screen orientation to landscape
@@ -264,7 +265,7 @@ jobs:
           convert appIcon.png -resize 192x192 pokevoid-src/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
 
 
-      - name: Build Android APK (unsigned)
+      - name: Debug AndroidManifest.xml
         working-directory: pokevoid-src/android
         run: cat /home/runner/work/iOS/iOS/pokevoid-src/android/app/src/main/AndroidManifest.xml
 
