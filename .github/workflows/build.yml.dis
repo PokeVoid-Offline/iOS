@@ -1,0 +1,145 @@
+name: Build PokeVoid IPA
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Clone PokeVoid fork
+        run: git clone --recurse-submodules --depth 1 --branch main https://github.com/smittynugget/pokevoid.git pokevoid-src
+
+      - name: Get PokeVoid version
+        id: PokeVoid_version
+        run: |
+          VERSION=0.$(node -p "require('./pokevoid-src/package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Apply patches
+        run: bash ${{ github.workspace }}/scripts/apply-patches.sh
+
+#      - name: Inject build number into banner
+#        run: |
+#          sed -i '' 's/BUILD_NUMBER_PLACEHOLDER/${{ github.run_number }}/g' pokevoid-src/src/ui/handlers/title-ui-handler.ts
+
+      - name: Install PokeVoid dependencies
+        working-directory: pokevoid-src
+        run: pnpm install
+
+      - name: Build PokeVoid
+        working-directory: pokevoid-src
+        env:
+          VITE_BYPASS_LOGIN: '1'
+        run: pnpm build
+
+#      - name: Copy save file to dist
+#        run: cp pokevoid-src/full_unlocks.prsv pokevoid-src/dist/full_unlocks.prsv
+
+      - name: Install Capacitor
+        working-directory: pokevoid-src
+        run: |
+          pnpm add @capacitor/core @capacitor/cli @capacitor/ios
+
+      - name: Configure Capacitor
+        working-directory: pokevoid-src
+        run: |
+          cat > capacitor.config.json << 'CAPEOF'
+          {
+            "appId": "xyz.scooom.pv",
+            "appName": "PokeVoid Offline",
+            "webDir": "dist",
+            "ios": {
+              "contentInset": "never",
+              "scrollEnabled": false,
+              "backgroundColor": "#000000",
+              "allowsLinkPreview": false,
+              "allowsBackForwardNavigationGestures": false
+            }
+          }
+          CAPEOF
+
+      - name: Add iOS platform
+        working-directory: pokevoid-src
+        run: npx cap add ios
+
+      - name: Sync Capacitor
+        working-directory: pokevoid-src
+        run: npx cap sync ios
+
+      - name: Set app version
+        working-directory: pokevoid-src
+        run: |
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${{ steps.PokeVoid_version.outputs.version }}.${{ github.run_number }}" ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ steps.PokeVoid_version.outputs.version }}.${{ github.run_number }}" ios/App/App/Info.plist
+
+      - name: Configure iOS app settings
+        working-directory: pokevoid-src
+        run: |
+          /usr/libexec/PlistBuddy -c "Delete :UISupportedInterfaceOrientations" ios/App/App/Info.plist || true
+          /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations array" ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations:0 string UIInterfaceOrientationLandscapeLeft" ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations:1 string UIInterfaceOrientationLandscapeRight" ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Add :UIStatusBarHidden bool true" ios/App/App/Info.plist || true
+          /usr/libexec/PlistBuddy -c "Add :UIViewControllerBasedStatusBarAppearance bool false" ios/App/App/Info.plist || true
+          /usr/libexec/PlistBuddy -c "Add :UIRequiresFullScreen bool true" ios/App/App/Info.plist || true
+          /usr/libexec/PlistBuddy -c "Set :LSApplicationCategoryType public.app-category.games" ios/App/App/Info.plist || true
+          /usr/libexec/PlistBuddy -c "Add :LSApplicationCategoryType string public.app-category.games" ios/App/App/Info.plist || true
+          /usr/libexec/PlistBuddy -c "Add :UIHomeIndicatorAutoHidden bool true" ios/App/App/Info.plist || true
+
+      - name: Copy app icon
+        run: |
+          cp appIcon.png pokevoid-src/ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png
+
+      - name: Build Xcode project (unsigned)
+        run: |
+          xcodebuild \
+            -project pokevoid-src/ios/App/App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -arch arm64 \
+            CODE_SIGNING_ALLOWED=NO \
+            CONFIGURATION_BUILD_DIR=$PWD/build
+
+      - name: Package IPA
+        run: |
+          mkdir -p Payload
+          cp -r "build/App.app" Payload/
+          zip -r PokeVoidOffline.ipa Payload
+          rm -rf Payload
+
+      - name: Get IPA size
+        id: ipa_size
+        run: echo "size=$(wc -c < PokeVoidOffline.ipa)" >> $GITHUB_OUTPUT
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PokeVoidOffline
+          path: PokeVoidOffline.ipa
+          retention-days: 30
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.PokeVoid_version.outputs.version }}-${{ github.run_number }}
+          name: PokeVoidOffline v${{ steps.PokeVoid_version.outputs.version }}
+          files: PokeVoidOffline.ipa
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
