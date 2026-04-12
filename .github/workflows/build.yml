@@ -239,7 +239,7 @@ jobs:
           fi
           
           # Set fullscreen
-          sed -i '/<activity/a\            android:theme="@android:style/Theme.NoTitleBar.Fullscreen"' android/app/src/main/AndroidManifest.xml
+          sed -i '/<activity/a\            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"' android/app/src/main/AndroidManifest.xml
 
       - name: Copy app icon
         run: |
