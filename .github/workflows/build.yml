@@ -264,7 +264,7 @@ jobs:
 
       - name: Build Android APK (unsigned)
         working-directory: pokevoid-src/android
-        run: ./gradlew assembleRelease --stacktrace --debug --scan
+        run: ./gradlew assembleRelease --stacktrace
 
       - name: Rename APK
         run: |
