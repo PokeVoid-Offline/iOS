@@ -1,4 +1,4 @@
-name: Build PokeVoid IPA
+name: Build PokeVoid IPA & APK
 
 on:
   workflow_dispatch:
@@ -7,9 +7,12 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    runs-on: macos-latest
-
+  # Prepare step - clone repo and apply patches once
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.pokevoid_version.outputs.version }}
+    
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -26,17 +29,13 @@ jobs:
         run: git clone --recurse-submodules --depth 1 --branch main https://github.com/smittynugget/pokevoid.git pokevoid-src
 
       - name: Get PokeVoid version
-        id: PokeVoid_version
+        id: pokevoid_version
         run: |
           VERSION=0.$(node -p "require('./pokevoid-src/package.json').version")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Apply patches
         run: bash ${{ github.workspace }}/scripts/apply-patches.sh
-
-#      - name: Inject build number into banner
-#        run: |
-#          sed -i '' 's/BUILD_NUMBER_PLACEHOLDER/${{ github.run_number }}/g' pokevoid-src/src/ui/handlers/title-ui-handler.ts
 
       - name: Install PokeVoid dependencies
         working-directory: pokevoid-src
@@ -48,8 +47,35 @@ jobs:
           VITE_BYPASS_LOGIN: '1'
         run: pnpm build
 
-#      - name: Copy save file to dist
-#        run: cp pokevoid-src/full_unlocks.prsv pokevoid-src/dist/full_unlocks.prsv
+      - name: Upload built source
+        uses: actions/upload-artifact@v4
+        with:
+          name: pokevoid-built
+          path: pokevoid-src/
+          retention-days: 1
+
+  # Build iOS IPA
+  build-ios:
+    needs: prepare
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Download built source
+        uses: actions/download-artifact@v4
+        with:
+          name: pokevoid-built
+          path: pokevoid-src
 
       - name: Install Capacitor
         working-directory: pokevoid-src
@@ -85,8 +111,8 @@ jobs:
       - name: Set app version
         working-directory: pokevoid-src
         run: |
-          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${{ steps.PokeVoid_version.outputs.version }}.${{ github.run_number }}" ios/App/App/Info.plist
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ steps.PokeVoid_version.outputs.version }}.${{ github.run_number }}" ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${{ needs.prepare.outputs.version }}.${{ github.run_number }}" ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ needs.prepare.outputs.version }}.${{ github.run_number }}" ios/App/App/Info.plist
 
       - name: Configure iOS app settings
         working-directory: pokevoid-src
@@ -124,22 +150,193 @@ jobs:
           zip -r PokeVoidOffline.ipa Payload
           rm -rf Payload
 
-      - name: Get IPA size
-        id: ipa_size
-        run: echo "size=$(wc -c < PokeVoidOffline.ipa)" >> $GITHUB_OUTPUT
-
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
-          name: PokeVoidOffline
+          name: PokeVoidOffline-IPA
           path: PokeVoidOffline.ipa
           retention-days: 30
+
+  # Build Android APK
+  build-android:
+    needs: prepare
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Download built source
+        uses: actions/download-artifact@v4
+        with:
+          name: pokevoid-built
+          path: pokevoid-src
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Capacitor
+        working-directory: pokevoid-src
+        run: |
+          pnpm add @capacitor/core @capacitor/cli @capacitor/android
+
+      - name: Configure Capacitor
+        working-directory: pokevoid-src
+        run: |
+          cat > capacitor.config.json << 'CAPEOF'
+          {
+            "appId": "xyz.scooom.pv",
+            "appName": "PokeVoid Offline",
+            "webDir": "dist",
+            "android": {
+              "allowMixedContent": true,
+              "backgroundColor": "#000000"
+            }
+          }
+          CAPEOF
+
+      - name: Add Android platform
+        working-directory: pokevoid-src
+        run: npx cap add android
+
+      - name: Sync Capacitor
+        working-directory: pokevoid-src
+        run: npx cap sync android
+
+      - name: Set app version
+        working-directory: pokevoid-src
+        run: |
+          VERSION_CODE=${{ github.run_number }}
+          VERSION_NAME="${{ needs.prepare.outputs.version }}.${{ github.run_number }}"
+          
+          # Update build.gradle
+          sed -i "s/versionCode 1/versionCode $VERSION_CODE/" android/app/build.gradle
+          sed -i "s/versionName \"1.0\"/versionName \"$VERSION_NAME\"/" android/app/build.gradle
+
+      - name: Configure Android app settings
+        working-directory: pokevoid-src
+        run: |
+          # Set screen orientation to landscape
+          sed -i 's/android:screenOrientation="portrait"/android:screenOrientation="landscape"/' android/app/src/main/AndroidManifest.xml
+          
+          # Add landscape orientation if not present
+          if ! grep -q "android:screenOrientation" android/app/src/main/AndroidManifest.xml; then
+            sed -i 's/<activity/\n            android:screenOrientation="landscape"\n            <activity/' android/app/src/main/AndroidManifest.xml
+          fi
+          
+          # Set fullscreen
+          sed -i '/<activity/a\            android:theme="@android:style/Theme.NoTitleBar.Fullscreen"' android/app/src/main/AndroidManifest.xml
+
+      - name: Copy app icon
+        run: |
+          # Create drawable directories if they don't exist
+          mkdir -p pokevoid-src/android/app/src/main/res/drawable
+          mkdir -p pokevoid-src/android/app/src/main/res/mipmap-hdpi
+          mkdir -p pokevoid-src/android/app/src/main/res/mipmap-mdpi
+          mkdir -p pokevoid-src/android/app/src/main/res/mipmap-xhdpi
+          mkdir -p pokevoid-src/android/app/src/main/res/mipmap-xxhdpi
+          mkdir -p pokevoid-src/android/app/src/main/res/mipmap-xxxhdpi
+          
+          # Install ImageMagick for icon conversion
+          sudo apt-get update
+          sudo apt-get install -y imagemagick
+          
+          # Convert and copy icon to different densities
+          convert appIcon.png -resize 48x48 pokevoid-src/android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+          convert appIcon.png -resize 72x72 pokevoid-src/android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+          convert appIcon.png -resize 96x96 pokevoid-src/android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+          convert appIcon.png -resize 144x144 pokevoid-src/android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+          convert appIcon.png -resize 192x192 pokevoid-src/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+
+      - name: Build Android APK (unsigned)
+        working-directory: pokevoid-src/android
+        run: ./gradlew assembleRelease
+
+      - name: Rename APK
+        run: |
+          cp pokevoid-src/android/app/build/outputs/apk/release/app-release-unsigned.apk PokeVoidOffline.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PokeVoidOffline-APK
+          path: PokeVoidOffline.apk
+          retention-days: 30
+
+  # Create release with both IPA and APK
+  release:
+    needs: [prepare, build-ios, build-android]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download IPA
+        uses: actions/download-artifact@v4
+        with:
+          name: PokeVoidOffline-IPA
+          path: ./
+
+      - name: Download APK
+        uses: actions/download-artifact@v4
+        with:
+          name: PokeVoidOffline-APK
+          path: ./
+
+      - name: Get file sizes
+        id: file_sizes
+        run: |
+          IPA_SIZE=$(wc -c < PokeVoidOffline.ipa | numfmt --to=iec-i --suffix=B)
+          APK_SIZE=$(wc -c < PokeVoidOffline.apk | numfmt --to=iec-i --suffix=B)
+          echo "ipa_size=$IPA_SIZE" >> $GITHUB_OUTPUT
+          echo "apk_size=$APK_SIZE" >> $GITHUB_OUTPUT
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.PokeVoid_version.outputs.version }}-${{ github.run_number }}
-          name: PokeVoidOffline v${{ steps.PokeVoid_version.outputs.version }}
-          files: PokeVoidOffline.ipa
+          tag_name: v${{ needs.prepare.outputs.version }}-${{ github.run_number }}
+          name: PokeVoidOffline v${{ needs.prepare.outputs.version }} (Build ${{ github.run_number }})
+          body: |
+            ## PokeVoid Offline - Multi-Platform Release
+            
+            ### 📦 Downloads
+            - **iOS (IPA)**: `PokeVoidOffline.ipa` (${{ steps.file_sizes.outputs.ipa_size }})
+            - **Android (APK)**: `PokeVoidOffline.apk` (${{ steps.file_sizes.outputs.apk_size }})
+            
+            ### 📱 Installation
+            
+            #### iOS
+            - Use SideStore, LiveContainer, or your preferred sideloading method
+            - See [installation guide](https://github.com/PokeVoid-Offline/iOS#installing-the-ipa)
+            
+            #### Android
+            - Enable "Install from Unknown Sources" in Settings
+            - Download and install the APK
+            - Note: APK is unsigned, you may need to allow installation
+            
+            ### ℹ️ Info
+            - **Version**: ${{ needs.prepare.outputs.version }}
+            - **Build**: ${{ github.run_number }}
+            - **Based on**: [PokeVoid by smittynugget](https://github.com/smittynugget/pokevoid)
+            
+            ### ⚠️ Notes
+            - Both builds are **unsigned** - for personal use only
+            - Fully offline - no internet required after installation
+            - Save files are stored locally on device
+          files: |
+            PokeVoidOffline.ipa
+            PokeVoidOffline.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
