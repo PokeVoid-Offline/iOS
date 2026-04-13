@@ -284,18 +284,21 @@ jobs:
             -keypass android \
             -dname "CN=PokeVoid, OU=Game, O=PokeVoid, L=City, S=State, C=US"
           
-          # Sign the APK using jarsigner
+          # Zipalign first
+          $ANDROID_HOME/build-tools/*/zipalign -v -p 4 \
+            pokevoid-src/android/app/build/outputs/apk/release/app-release-unsigned.apk \
+            app-aligned.apk
+          
+          # Then sign the aligned APK
           jarsigner -verbose \
             -keystore release.keystore \
             -storepass android \
             -keypass android \
-            pokevoid-src/android/app/build/outputs/apk/release/app-release-unsigned.apk \
+            app-aligned.apk \
             release
           
-          # Zipalign the signed APK
-          $ANDROID_HOME/build-tools/*/zipalign -f -v 4 \
-            pokevoid-src/android/app/build/outputs/apk/release/app-release-unsigned.apk \
-            PokeVoidOffline.apk
+          # Rename to final output
+          mv app-aligned.apk PokeVoidOffline.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
