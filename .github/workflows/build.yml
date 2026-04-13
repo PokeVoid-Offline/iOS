@@ -276,7 +276,11 @@ jobs:
           # Find zipalign
           ZIPALIGN=$(find $ANDROID_HOME/build-tools -name zipalign | head -1)
           echo "Using zipalign: $ZIPALIGN"
-          
+
+          APKSIGNER=$(find $ANDROID_HOME/build-tools -name apksigner.jar | head -1)
+          echo "Using zipalign: $APKSIGNER"
+
+
           # Generate a keystore for signing
           keytool -genkeypair -v \
             -keystore release.keystore \
@@ -288,22 +292,22 @@ jobs:
             -keypass android \
             -dname "CN=PokeVoid, OU=Game, O=PokeVoid, L=City, S=State, C=US"
           
-          # Zipalign first
+          # Sign with apksigner v2
+          java -jar $APKSIGNER sign \
+            --ks release.keystore \
+            --ks-key-alias release \
+            --ks-pass pass:android \
+            --key-pass pass:android \
+            --out PokeVoidOfflineUnaligned.apk \
+            pokevoid-src/android/app/build/outputs/apk/release/app-release-unsigned.apk
+          
+          # Verify signature
+          java -jar $APKSIGNER verify PokeVoidOfflineUnaligned.apk
+          
+          # Zipalign the unsigned APK
           $ZIPALIGN -p -v 4 \
-            pokevoid-src/android/app/build/outputs/apk/release/app-release-unsigned.apk \
-            app-aligned.apk
-          
-          # Then sign the aligned APK
-          jarsigner -verbose \
-            -keystore release.keystore \
-            -storepass android \
-            -keypass android \
-            app-aligned.apk \
-            release
-          
-          # Rename to final output
-          mv app-aligned.apk PokeVoidOffline.apk
- 
+            PokeVoidOfflineUnaligned.apk \
+            PokeVoidOffline.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
