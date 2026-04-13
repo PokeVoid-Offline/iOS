@@ -271,9 +271,30 @@ jobs:
         working-directory: pokevoid-src/android
         run: ./gradlew assembleRelease
 
-      - name: Rename APK
+      - name: Sign APK
         run: |
-          cp pokevoid-src/android/app/build/outputs/apk/release/app-release-unsigned.apk PokeVoidOffline.apk
+          # Generate a keystore for signing
+          keytool -genkeypair -v \
+            -keystore release.keystore \
+            -alias release \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storepass android \
+            -keypass android \
+            -dname "CN=PokeVoid, OU=Game, O=PokeVoid, L=City, S=State, C=US"
+          
+          # Sign the APK
+          $ANDROID_HOME/build-tools/*/apksigner sign \
+            --ks release.keystore \
+            --ks-key-alias release \
+            --ks-pass pass:android \
+            --key-pass pass:android \
+            --out PokeVoidOffline.apk \
+            pokevoid-src/android/app/build/outputs/apk/release/app-release-unsigned.apk
+          
+          # Verify the signature
+          $ANDROID_HOME/build-tools/*/apksigner verify PokeVoidOffline.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
