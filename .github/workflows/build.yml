@@ -31,7 +31,7 @@ jobs:
       - name: Get PokeVoid version
         id: pokevoid_version
         run: |
-          VERSION=0.$(node -p "require('./pokevoid-src/package.json').version")
+          VERSION=2.4.3
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Apply patches
