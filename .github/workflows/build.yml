@@ -56,7 +56,6 @@ jobs:
 
   # Build iOS IPA
   build-ios:
-    if: false
     needs: prepare
     runs-on: macos-latest
 
@@ -315,7 +314,6 @@ jobs:
 
   # Create release with both IPA and APK
   release:
-    if: false
     needs: [prepare, build-ios, build-android]
     runs-on: ubuntu-latest
 
