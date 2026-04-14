@@ -444,12 +444,12 @@ jobs:
         run: cp pokevoid-src/electron-dist/*.exe PokeVoidOffline-Windows.exe
 
       - name: Copy output (macOS x64)
-        if: matrix.artifact == 'PokeVoidOffline-Mac.dmg'
+        if: matrix.artifact == 'PokeVoidOffline-Mac'
         run: |
           cp pokevoid-src/electron-dist/*.${{ github.run_number }}.dmg PokeVoidOffline-Mac.dmg
 
       - name: Copy output (macOS arm64)
-        if: matrix.artifact == 'PokeVoidOffline-Mac-arm64.dmg'
+        if: matrix.artifact == 'PokeVoidOffline-Mac-arm64'
         run: |
           cp pokevoid-src/electron-dist/*-arm64.dmg PokeVoidOffline-Mac-arm64.dmg
 
