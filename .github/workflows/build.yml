@@ -69,7 +69,7 @@ jobs:
 
   # Build iOS IPA
   build-ios:
-    if: false
+#    if: false
     needs: prepare
     runs-on: macos-latest
 
@@ -173,7 +173,7 @@ jobs:
 
   # Build Android APK
   build-android:
-    if: false
+#    if: false
     needs: prepare
     runs-on: ubuntu-latest
 
@@ -281,10 +281,10 @@ jobs:
     strategy:
       matrix:
         include:
-#          - os: windows-latest
-#            platform: win
-#            artifact: PokeVoidOffline-Windows
-#            output: PokeVoidOffline-Windows.exe
+          - os: windows-latest
+            platform: win
+            artifact: PokeVoidOffline-Windows
+            output: PokeVoidOffline-Windows.exe
           - os: macos-latest
             platform: mac
             artifact: PokeVoidOffline-Mac
@@ -293,11 +293,10 @@ jobs:
             platform: mac
             artifact: PokeVoidOffline-Mac-arm64
             output: PokeVoidOffline-Mac-arm64.dmg
-            
-#          - os: ubuntu-latest
-#            platform: linux
-#            artifact: PokeVoidOffline-Linux
-#            output: PokeVoidOffline-Linux.AppImage
+          - os: ubuntu-latest
+            platform: linux
+            artifact: PokeVoidOffline-Linux
+            output: PokeVoidOffline-Linux.AppImage
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -467,7 +466,7 @@ jobs:
 
   # Create release with IPA, APK, and desktop builds
   release:
-    if: false
+#    if: false
     needs: [prepare, build-ios, build-android, build-desktop]
     runs-on: ubuntu-latest
 
