@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.pokevoid_version.outputs.version }}
-    
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -36,6 +36,19 @@ jobs:
 
       - name: Apply patches
         run: bash ${{ github.workspace }}/scripts/apply-patches.sh
+
+      - name: Remove CapacitorUpdater import from main.ts
+        run: |
+          node -e "
+            const fs = require('fs');
+            const path = 'pokevoid-src/src/main.ts';
+            let content = fs.readFileSync(path, 'utf8');
+            content = content.replace(
+              /(void boot\(\);)[\s\S]*?(export default game;)/,
+              '\$1\n\n\$2'
+            );
+            fs.writeFileSync(path, content);
+          "
 
       - name: Install PokeVoid dependencies
         working-directory: pokevoid-src
@@ -204,7 +217,8 @@ jobs:
             "webDir": "dist",
             "android": {
               "allowMixedContent": true,
-              "backgroundColor": "#000000"
+              "backgroundColor": "#000000",
+              "orientation": "landscape"
             }
           }
           CAPEOF
@@ -222,92 +236,35 @@ jobs:
         run: |
           VERSION_CODE=${{ github.run_number }}
           VERSION_NAME="${{ needs.prepare.outputs.version }}.${{ github.run_number }}"
-          
-          # Update build.gradle
           sed -i "s/versionCode 1/versionCode $VERSION_CODE/" android/app/build.gradle
           sed -i "s/versionName \"1.0\"/versionName \"$VERSION_NAME\"/" android/app/build.gradle
 
-      - name: Configure Android app settings
-        working-directory: pokevoid-src
-        run: |
-          # Set screen orientation to landscape
-          sed -i 's/android:screenOrientation="portrait"/android:screenOrientation="landscape"/' android/app/src/main/AndroidManifest.xml
-          
-          # Add landscape orientation if not present
-          if ! grep -q "android:screenOrientation" android/app/src/main/AndroidManifest.xml; then
-            sed -i 's/<activity/<activity\n            android:screenOrientation="landscape"/' android/app/src/main/AndroidManifest.xml
-          fi
-          
-          # Set fullscreen
-          sed -i 's|@style/AppTheme.NoActionBarLaunch|@android:style/Theme.Black.NoTitleBar.Fullscreen|g' android/app/src/main/AndroidManifest.xml
-
       - name: Copy app icon
         run: |
-          # Create drawable directories if they don't exist
-          mkdir -p pokevoid-src/android/app/src/main/res/drawable
-          mkdir -p pokevoid-src/android/app/src/main/res/mipmap-hdpi
           mkdir -p pokevoid-src/android/app/src/main/res/mipmap-mdpi
+          mkdir -p pokevoid-src/android/app/src/main/res/mipmap-hdpi
           mkdir -p pokevoid-src/android/app/src/main/res/mipmap-xhdpi
           mkdir -p pokevoid-src/android/app/src/main/res/mipmap-xxhdpi
           mkdir -p pokevoid-src/android/app/src/main/res/mipmap-xxxhdpi
-          
-          # Install ImageMagick for icon conversion
+
           sudo apt-get update
           sudo apt-get install -y imagemagick
-          
-          # Convert and copy icon to different densities
-          convert appIcon.png -resize 48x48 pokevoid-src/android/app/src/main/res/mipmap-mdpi/ic_launcher.png
-          convert appIcon.png -resize 72x72 pokevoid-src/android/app/src/main/res/mipmap-hdpi/ic_launcher.png
-          convert appIcon.png -resize 96x96 pokevoid-src/android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+
+          convert appIcon.png -resize 48x48   pokevoid-src/android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+          convert appIcon.png -resize 72x72   pokevoid-src/android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+          convert appIcon.png -resize 96x96   pokevoid-src/android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
           convert appIcon.png -resize 144x144 pokevoid-src/android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
           convert appIcon.png -resize 192x192 pokevoid-src/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
 
+      - name: Make Gradle wrapper executable
+        run: chmod +x pokevoid-src/android/gradlew
 
-      - name: Debug AndroidManifest.xml
+      - name: Build debug APK
         working-directory: pokevoid-src/android
-        run: cat /home/runner/work/iOS/iOS/pokevoid-src/android/app/src/main/AndroidManifest.xml
+        run: ./gradlew assembleDebug
 
-      - name: Build Android APK (unsigned)
-        working-directory: pokevoid-src/android
-        run: ./gradlew assembleRelease
-
-      - name: Sign APK
-        run: |
-          # Find zipalign
-          ZIPALIGN=$(find $ANDROID_HOME/build-tools -name zipalign | head -1)
-          echo "Using zipalign: $ZIPALIGN"
-
-          APKSIGNER=$(find $ANDROID_HOME/build-tools -name apksigner.jar | head -1)
-          echo "Using zipalign: $APKSIGNER"
-
-
-          # Generate a keystore for signing
-          keytool -genkeypair -v \
-            -keystore release.keystore \
-            -alias release \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
-            -storepass android \
-            -keypass android \
-            -dname "CN=PokeVoid, OU=Game, O=PokeVoid, L=City, S=State, C=US"
-          
-          # Sign with apksigner v2
-          java -jar $APKSIGNER sign \
-            --ks release.keystore \
-            --ks-key-alias release \
-            --ks-pass pass:android \
-            --key-pass pass:android \
-            --out PokeVoidOfflineUnaligned.apk \
-            pokevoid-src/android/app/build/outputs/apk/release/app-release-unsigned.apk
-          
-          # Verify signature
-          java -jar $APKSIGNER verify PokeVoidOfflineUnaligned.apk
-          
-          # Zipalign the unsigned APK
-          $ZIPALIGN -p -v 4 \
-            PokeVoidOfflineUnaligned.apk \
-            PokeVoidOffline.apk
+      - name: Copy APK
+        run: cp pokevoid-src/android/app/build/outputs/apk/debug/app-debug.apk PokeVoidOffline.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
@@ -349,29 +306,29 @@ jobs:
           name: PokeVoidOffline v${{ needs.prepare.outputs.version }} (Build ${{ github.run_number }})
           body: |
             ## PokeVoid Offline - Multi-Platform Release
-            
+
             ### 📦 Downloads
             - **iOS (IPA)**: `PokeVoidOffline.ipa` (${{ steps.file_sizes.outputs.ipa_size }})
             - **Android (APK)**: `PokeVoidOffline.apk` (${{ steps.file_sizes.outputs.apk_size }})
-            
+
             ### 📱 Installation
-            
+
             #### iOS
             - Use SideStore, LiveContainer, or your preferred sideloading method
             - See [installation guide](https://github.com/PokeVoid-Offline/iOS#installing-the-ipa)
-            
+
             #### Android
             - Enable "Install from Unknown Sources" in Settings
             - Download and install the APK
-            - Note: APK is unsigned, you may need to allow installation
-            
+            - Note: APK is debug-signed, you may need to allow installation
+
             ### ℹ️ Info
             - **Version**: ${{ needs.prepare.outputs.version }}
             - **Build**: ${{ github.run_number }}
             - **Based on**: [PokeVoid by smittynugget](https://github.com/smittynugget/pokevoid)
-            
+
             ### ⚠️ Notes
-            - Both builds are **unsigned** - for personal use only
+            - Both builds are **unsigned/debug-signed** - for personal use only
             - Fully offline - no internet required after installation
             - Save files are stored locally on device
           files: |

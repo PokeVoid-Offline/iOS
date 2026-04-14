@@ -35,8 +35,7 @@ apply_submodule_patch() {
 # CRITICAL: Remove Capacitor Updater for offline builds
 #apply_patch "remove-capacitor-updater.js"
 
-apply_patch "externalize-capacitor-updater.js"
-apply_patch "fix-remove-pokesave.js"
+apply_patch "noZoom.patch"
 
 
 echo "All patches applied successfully."
