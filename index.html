@@ -7,10 +7,9 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.6.2/css/bootstrap.min.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Nunito:wght@400;600&display=swap" rel="stylesheet" />
-  
-    <link rel="apple-touch-icon" sizes="180x180" href="https://void.scooom.xyz/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="https://void.scooom.xyz/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="https://void.scooom.xyz/favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="https://void.scooom.xyz/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="https://void.scooom.xyz/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="https://void.scooom.xyz/favicon-16x16.png">
   <style>
     :root {
       --bg:        #1a0d2e;
@@ -162,12 +161,25 @@
       margin-right: 1.25rem;
     }
 
+    .download-group {
+      margin-bottom: 1.25rem;
+    }
+
+    .download-group-label {
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700;
+      font-size: 0.8rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.5rem;
+    }
+
     .download-buttons {
       display: flex;
       flex-wrap: wrap;
       gap: 0.75rem;
       align-items: center;
-      margin-top: 1rem;
     }
 
     .btn-download {
@@ -183,20 +195,16 @@
       display: inline-flex;
       align-items: center;
       gap: 0.5rem;
-      transition: opacity 0.15s;
+      transition: filter 0.15s;
     }
 
     .btn-download:hover { filter: brightness(0.85); text-decoration: none; }
 
-    .btn-apk {
-      background-color: #3ddc84;
-      color: #0f0619;
-    }
-
-    .btn-ipa {
-      background-color: #a8a8b3;
-      color: #0f0619;
-    }
+    .btn-apk  { background-color: #3ddc84; color: #0f0619; }
+    .btn-ipa  { background-color: #a8a8b3; color: #0f0619; }
+    .btn-win  { background-color: #0078d4; color: #ffffff; }
+    .btn-mac  { background-color: #555555; color: #ffffff; }
+    .btn-lin  { background-color: #e95420; color: #ffffff; }
 
     .btn-download.loading {
       opacity: 0.5;
@@ -302,33 +310,54 @@
 
     <h1>PokeVoid Offline</h1>
     <p>
-      Play PokeVoid on your phone — no internet required. This page provides the latest offline builds
-      for Android and iOS, along with instructions for getting them installed.
+      Play PokeVoid on any device — no internet required. This page provides the latest offline builds
+      for Android, iOS, Windows, macOS, and Linux, along with instructions for getting them installed.
     </p>
     <p>
       These builds are based on <a href="https://void.scooom.xyz/">PokeVoid</a> by smittynugget, packaged
-      as a native app using Capacitor so everything runs locally on your device.
+      as a native app so everything runs locally on your device.
     </p>
 
     <hr />
 
     <!-- Downloads -->
-    <h2 id="downloads">Downloads</h2>
+    <h2>Downloads</h2>
     <div id="downloads">
       <div class="release-meta" id="release-meta">
         <span>Fetching latest release&hellip;</span>
       </div>
-      <div class="download-buttons">
-        <a id="btn-apk" class="btn-download btn-apk loading" href="#">
-          <i class="fab fa-android"></i> Download APK
-        </a>
-        <a id="btn-ipa" class="btn-download btn-ipa loading" href="#">
-          <i class="fab fa-apple"></i> Download IPA
-        </a>
-        <a id="see-all" class="see-all" href="https://github.com/PokeVoid-Offline/releases/releases" target="_blank">
-          See all releases &rarr;
-        </a>
+
+      <div class="download-group">
+        <div class="download-group-label">Mobile</div>
+        <div class="download-buttons">
+          <a id="btn-apk" class="btn-download btn-apk loading" href="#">
+            <i class="fab fa-android"></i> Download APK
+          </a>
+          <a id="btn-ipa" class="btn-download btn-ipa loading" href="#">
+            <i class="fab fa-apple"></i> Download IPA
+          </a>
+        </div>
       </div>
+
+      <div class="download-group">
+        <div class="download-group-label">Desktop</div>
+        <div class="download-buttons">
+          <a id="btn-win" class="btn-download btn-win loading" href="#">
+            <i class="fab fa-windows"></i> Windows
+          </a>
+          <a id="btn-mac" class="btn-download btn-mac loading" href="#">
+            <i class="fab fa-apple"></i> macOS
+          </a>
+          <a id="btn-lin" class="btn-download btn-lin loading" href="#">
+            <i class="fab fa-linux"></i> Linux
+          </a>
+        </div>
+      </div>
+
+      <a id="see-all" class="see-all" href="https://github.com/PokeVoid-Offline/releases/releases">
+        See all releases &rarr;
+      </a>
+
       <p class="no-release" id="release-error" style="display:none;">
         Could not load release information. <a href="https://github.com/PokeVoid-Offline/releases/releases">View releases on GitHub.</a>
       </p>
@@ -387,6 +416,37 @@
       </ol>
     </div>
 
+    <hr />
+
+    <!-- Desktop -->
+    <h2>Installing on Desktop</h2>
+
+    <div class="install-method">
+      <h3><i class="fab fa-windows" style="color:var(--muted);font-size:0.95rem;"></i> Windows</h3>
+      <ol>
+        <li>Download <code>PokeVoidOffline-Windows.exe</code> above.</li>
+        <li>Run the file — no installation needed. Windows may show a SmartScreen warning; click <strong>More info</strong> &rarr; <strong>Run anyway</strong>.</li>
+      </ol>
+    </div>
+
+    <div class="install-method">
+      <h3><i class="fab fa-apple" style="color:var(--muted);font-size:0.95rem;"></i> macOS</h3>
+      <ol>
+        <li>Download <code>PokeVoidOffline-Mac.dmg</code> above.</li>
+        <li>Open the DMG and drag <strong>PokeVoid Offline</strong> to your Applications folder.</li>
+        <li>On first launch, macOS may block the app. Go to <strong>System Settings &rarr; Privacy & Security</strong> and click <strong>Open Anyway</strong>.</li>
+      </ol>
+    </div>
+
+    <div class="install-method">
+      <h3><i class="fab fa-linux" style="color:var(--muted);font-size:0.95rem;"></i> Linux</h3>
+      <ol>
+        <li>Download <code>PokeVoidOffline-Linux.AppImage</code> above.</li>
+        <li>Make it executable: <code>chmod +x PokeVoidOffline-Linux.AppImage</code></li>
+        <li>Run it: <code>./PokeVoidOffline-Linux.AppImage</code></li>
+      </ol>
+    </div>
+
     <div class="contact">
       Questions? Contact <a href="https://discord.com/users/scooom">scooom</a> on Discord.
     </div>
@@ -406,32 +466,34 @@
 
         const apk = data.assets.find(a => a.name.endsWith('.apk'));
         const ipa = data.assets.find(a => a.name.endsWith('.ipa'));
+        const win = data.assets.find(a => a.name.endsWith('.exe'));
+        const mac = data.assets.find(a => a.name.endsWith('.dmg'));
+        const lin = data.assets.find(a => a.name.endsWith('.AppImage'));
 
         const meta = document.getElementById('release-meta');
         const date = new Date(data.published_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
         meta.innerHTML = `<span><strong style="color:var(--text)">${data.name}</strong></span><span>${date}</span>`;
 
-        const btnApk = document.getElementById('btn-apk');
-        if (apk) {
-          btnApk.href = apk.browser_download_url;
-          btnApk.classList.remove('loading');
-        } else {
-          btnApk.style.display = 'none';
+        function wireBtn(id, asset) {
+          const btn = document.getElementById(id);
+          if (asset) {
+            btn.href = asset.browser_download_url;
+            btn.classList.remove('loading');
+          } else {
+            btn.style.display = 'none';
+          }
         }
 
-        const btnIpa = document.getElementById('btn-ipa');
-        if (ipa) {
-          btnIpa.href = ipa.browser_download_url;
-          btnIpa.classList.remove('loading');
-        } else {
-          btnIpa.style.display = 'none';
-        }
+        wireBtn('btn-apk', apk);
+        wireBtn('btn-ipa', ipa);
+        wireBtn('btn-win', win);
+        wireBtn('btn-mac', mac);
+        wireBtn('btn-lin', lin);
 
       } catch (e) {
-        document.getElementById('release-meta').style.display = 'none';
-        document.getElementById('btn-apk').style.display = 'none';
-        document.getElementById('btn-ipa').style.display = 'none';
-        document.getElementById('see-all').style.display = 'none';
+        ['release-meta', 'btn-apk', 'btn-ipa', 'btn-win', 'btn-mac', 'btn-lin', 'see-all'].forEach(id => {
+          document.getElementById(id).style.display = 'none';
+        });
         document.getElementById('release-error').style.display = 'block';
       }
     }

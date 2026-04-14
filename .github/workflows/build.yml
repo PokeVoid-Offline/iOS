@@ -273,9 +273,188 @@ jobs:
           path: PokeVoidOffline.apk
           retention-days: 30
 
-  # Create release with both IPA and APK
+  # Build Desktop apps
+  build-desktop:
+    needs: prepare
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            platform: win
+            artifact: PokeVoidOffline-Windows
+            output: PokeVoidOffline-Windows.exe
+          - os: macos-latest
+            platform: mac
+            artifact: PokeVoidOffline-Mac
+            output: PokeVoidOffline-Mac.dmg
+          - os: ubuntu-latest
+            platform: linux
+            artifact: PokeVoidOffline-Linux
+            output: PokeVoidOffline-Linux.AppImage
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Download built source
+        uses: actions/download-artifact@v4
+        with:
+          name: pokevoid-built
+          path: pokevoid-src
+
+      - name: Install ImageMagick (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y imagemagick
+
+      - name: Install ImageMagick (macOS)
+        if: matrix.os == 'macos-latest'
+        run: brew install imagemagick
+
+      - name: Install ImageMagick (Windows)
+        if: matrix.os == 'windows-latest'
+        run: choco install imagemagick -y
+
+      - name: Convert icon for Windows (.ico)
+        if: matrix.os == 'windows-latest'
+        run: magick appIcon.png -resize 256x256 appIcon.ico
+
+      - name: Convert icon for macOS (.icns)
+        if: matrix.os == 'macos-latest'
+        run: |
+          mkdir -p AppIcon.iconset
+          convert appIcon.png -resize 16x16     AppIcon.iconset/icon_16x16.png
+          convert appIcon.png -resize 32x32     AppIcon.iconset/icon_16x16@2x.png
+          convert appIcon.png -resize 32x32     AppIcon.iconset/icon_32x32.png
+          convert appIcon.png -resize 64x64     AppIcon.iconset/icon_32x32@2x.png
+          convert appIcon.png -resize 128x128   AppIcon.iconset/icon_128x128.png
+          convert appIcon.png -resize 256x256   AppIcon.iconset/icon_128x128@2x.png
+          convert appIcon.png -resize 256x256   AppIcon.iconset/icon_256x256.png
+          convert appIcon.png -resize 512x512   AppIcon.iconset/icon_256x256@2x.png
+          convert appIcon.png -resize 512x512   AppIcon.iconset/icon_512x512.png
+          convert appIcon.png -resize 1024x1024 AppIcon.iconset/icon_512x512@2x.png
+          iconutil -c icns AppIcon.iconset -o appIcon.icns
+
+      - name: Write Electron main.js
+        shell: bash
+        run: |
+          cat > pokevoid-src/electron-main.js << 'EOF'
+          const { app, BrowserWindow } = require('electron');
+          const path = require('path');
+
+          function createWindow() {
+            const win = new BrowserWindow({
+              width: 1280,
+              height: 720,
+              fullscreen: true,
+              webPreferences: {
+                nodeIntegration: false,
+                contextIsolation: true,
+              },
+            });
+
+            win.loadFile(path.join(__dirname, 'dist', 'index.html'));
+            win.setMenuBarVisibility(false);
+          }
+
+          app.whenReady().then(createWindow);
+
+          app.on('window-all-closed', () => {
+            if (process.platform !== 'darwin') app.quit();
+          });
+
+          app.on('activate', () => {
+            if (BrowserWindow.getAllWindows().length === 0) createWindow();
+          });
+          EOF
+
+      - name: Write electron-builder config
+        shell: bash
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}.${{ github.run_number }}"
+          cat > pokevoid-src/electron-builder.json << EOF
+          {
+            "appId": "xyz.scooom.pv",
+            "productName": "PokeVoid Offline",
+            "copyright": "PokeVoid by smittynugget",
+            "directories": {
+              "output": "electron-dist"
+            },
+            "files": [
+              "dist/**",
+              "electron-main.js"
+            ],
+            "extraMetadata": {
+              "main": "electron-main.js",
+              "version": "${VERSION}"
+            },
+            "win": {
+              "target": [{ "target": "portable", "arch": ["x64"] }],
+              "icon": "../appIcon.ico"
+            },
+            "mac": {
+              "target": [{ "target": "dmg", "arch": ["x64", "arm64"] }],
+              "icon": "../appIcon.icns",
+              "category": "public.app-category.games"
+            },
+            "linux": {
+              "target": [{ "target": "AppImage", "arch": ["x64"] }],
+              "icon": "../appIcon.png",
+              "category": "Game"
+            }
+          }
+          EOF
+
+      - name: Install Electron and electron-builder
+        working-directory: pokevoid-src
+        run: pnpm add -D electron electron-builder
+
+      - name: Build desktop app (Windows)
+        if: matrix.os == 'windows-latest'
+        working-directory: pokevoid-src
+        run: npx electron-builder --win --config electron-builder.json
+
+      - name: Build desktop app (macOS)
+        if: matrix.os == 'macos-latest'
+        working-directory: pokevoid-src
+        run: npx electron-builder --mac --config electron-builder.json
+
+      - name: Build desktop app (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        working-directory: pokevoid-src
+        run: npx electron-builder --linux --config electron-builder.json
+
+      - name: Copy output (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        run: cp pokevoid-src/electron-dist/*.exe PokeVoidOffline-Windows.exe
+
+      - name: Copy output (macOS)
+        if: matrix.os == 'macos-latest'
+        run: cp pokevoid-src/electron-dist/*.dmg PokeVoidOffline-Mac.dmg
+
+      - name: Copy output (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: cp pokevoid-src/electron-dist/*.AppImage PokeVoidOffline-Linux.AppImage
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.output }}
+          retention-days: 30
+
+  # Create release with IPA, APK, and desktop builds
   release:
-    needs: [prepare, build-ios, build-android]
+    needs: [prepare, build-ios, build-android, build-desktop]
     runs-on: ubuntu-latest
 
     steps:
@@ -291,13 +470,37 @@ jobs:
           name: PokeVoidOffline-APK
           path: ./
 
+      - name: Download Windows build
+        uses: actions/download-artifact@v4
+        with:
+          name: PokeVoidOffline-Windows
+          path: ./
+
+      - name: Download macOS build
+        uses: actions/download-artifact@v4
+        with:
+          name: PokeVoidOffline-Mac
+          path: ./
+
+      - name: Download Linux build
+        uses: actions/download-artifact@v4
+        with:
+          name: PokeVoidOffline-Linux
+          path: ./
+
       - name: Get file sizes
         id: file_sizes
         run: |
           IPA_SIZE=$(wc -c < PokeVoidOffline.ipa | numfmt --to=iec-i --suffix=B)
           APK_SIZE=$(wc -c < PokeVoidOffline.apk | numfmt --to=iec-i --suffix=B)
+          WIN_SIZE=$(wc -c < PokeVoidOffline-Windows.exe | numfmt --to=iec-i --suffix=B)
+          MAC_SIZE=$(wc -c < PokeVoidOffline-Mac.dmg | numfmt --to=iec-i --suffix=B)
+          LIN_SIZE=$(wc -c < PokeVoidOffline-Linux.AppImage | numfmt --to=iec-i --suffix=B)
           echo "ipa_size=$IPA_SIZE" >> $GITHUB_OUTPUT
           echo "apk_size=$APK_SIZE" >> $GITHUB_OUTPUT
+          echo "win_size=$WIN_SIZE" >> $GITHUB_OUTPUT
+          echo "mac_size=$MAC_SIZE" >> $GITHUB_OUTPUT
+          echo "lin_size=$LIN_SIZE" >> $GITHUB_OUTPUT
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -310,6 +513,9 @@ jobs:
             ### 📦 Downloads
             - **iOS (IPA)**: `PokeVoidOffline.ipa` (${{ steps.file_sizes.outputs.ipa_size }})
             - **Android (APK)**: `PokeVoidOffline.apk` (${{ steps.file_sizes.outputs.apk_size }})
+            - **Windows**: `PokeVoidOffline-Windows.exe` (${{ steps.file_sizes.outputs.win_size }})
+            - **macOS**: `PokeVoidOffline-Mac.dmg` (${{ steps.file_sizes.outputs.mac_size }})
+            - **Linux**: `PokeVoidOffline-Linux.AppImage` (${{ steps.file_sizes.outputs.lin_size }})
 
             ### 📱 Installation
 
@@ -322,17 +528,31 @@ jobs:
             - Download and install the APK
             - Note: APK is debug-signed, you may need to allow installation
 
+            #### Windows
+            - Download and run the `.exe` — no installation needed
+
+            #### macOS
+            - Download the `.dmg`, open it, and drag PokeVoid Offline to your Applications folder
+            - You may need to allow the app in System Settings → Privacy & Security
+
+            #### Linux
+            - Download the `.AppImage`, make it executable (`chmod +x`), and run it
+
             ### ℹ️ Info
             - **Version**: ${{ needs.prepare.outputs.version }}
             - **Build**: ${{ github.run_number }}
             - **Based on**: [PokeVoid by smittynugget](https://github.com/smittynugget/pokevoid)
 
             ### ⚠️ Notes
-            - Both builds are **unsigned/debug-signed** - for personal use only
+            - Mobile builds are **unsigned/debug-signed** - for personal use only
+            - Desktop builds are **unsigned** - you may need to bypass OS security warnings
             - Fully offline - no internet required after installation
             - Save files are stored locally on device
           files: |
             PokeVoidOffline.ipa
             PokeVoidOffline.apk
+            PokeVoidOffline-Windows.exe
+            PokeVoidOffline-Mac.dmg
+            PokeVoidOffline-Linux.AppImage
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
