@@ -315,7 +315,7 @@ jobs:
 
             #### iOS
             - Use SideStore, LiveContainer, or your preferred sideloading method
-            - See [installation guide](https://github.com/PokeVoid-Offline/iOS#installing-the-ipa)
+            - See [installation guide](https://github.com/PokeVoid-Offline/releases#installing-the-ipa)
 
             #### Android
             - Enable "Install from Unknown Sources" in Settings

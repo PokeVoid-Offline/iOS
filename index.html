@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>PokeVoid Offline</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.6.2/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Nunito:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:        #1a0d2e;
+      --bg-card:   #22113a;
+      --purple:    #361b63;
+      --accent:    #c084fc;
+      --accent2:   #e879f9;
+      --text:      #e2d9f3;
+      --muted:     #9d8ec0;
+      --border:    #4a2d7a;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: 'Nunito', sans-serif;
+      font-size: 1rem;
+      line-height: 1.7;
+      margin: 0;
+    }
+
+    /* ── Navbar ── */
+    .navbar {
+      background-color: #0f0619 !important;
+      border-bottom: 1px solid var(--border);
+      padding: 0.5rem 1.5rem;
+    }
+
+    .navbar-brand {
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700;
+      font-size: 1.3rem;
+      color: var(--text) !important;
+      letter-spacing: 0.05em;
+    }
+
+    .navbar-dark .navbar-nav .nav-link {
+      color: var(--muted) !important;
+      font-weight: 600;
+      padding: 0.5rem 0.85rem;
+      transition: color 0.15s;
+    }
+
+    .navbar-dark .navbar-nav .nav-link:hover,
+    .navbar-dark .navbar-nav .nav-link.active {
+      color: var(--text) !important;
+    }
+
+    .navbar-dark .navbar-nav .dropdown-menu {
+      background-color: #0f0619;
+      border: 1px solid var(--border);
+    }
+
+    .navbar-dark .navbar-nav .dropdown-item {
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .navbar-dark .navbar-nav .dropdown-item:hover {
+      background-color: var(--purple);
+      color: var(--text);
+    }
+
+    .navbar-toggler {
+      border-color: var(--border);
+    }
+
+    .btn-nav-download {
+      background: transparent;
+      border: 1px solid var(--text);
+      color: var(--text) !important;
+      font-weight: 600;
+      padding: 0.3rem 1rem;
+      border-radius: 4px;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .btn-nav-download:hover {
+      background: var(--text);
+      color: #0f0619 !important;
+      text-decoration: none;
+    }
+
+    /* ── Main content ── */
+    .main-content {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 3rem 1.5rem 5rem;
+    }
+
+    h1 {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 2.2rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 1rem;
+    }
+
+    h2 {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-top: 2.5rem;
+      margin-bottom: 1rem;
+    }
+
+    h3 {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--accent);
+      margin-top: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    p { color: var(--text); }
+
+    a { color: var(--accent); }
+    a:hover { color: var(--accent2); }
+
+    .muted { color: var(--muted); }
+
+    hr {
+      border-color: var(--border);
+      margin: 2.5rem 0;
+    }
+
+    /* ── Download section ── */
+    #downloads {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 2rem;
+      margin-top: 2rem;
+    }
+
+    .release-meta {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 1.5rem;
+    }
+
+    .release-meta span {
+      margin-right: 1.25rem;
+    }
+
+    .download-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+      margin-top: 1rem;
+    }
+
+    .btn-download {
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700;
+      font-size: 1rem;
+      letter-spacing: 0.04em;
+      padding: 0.55rem 1.4rem;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: opacity 0.15s;
+    }
+
+    .btn-download:hover { opacity: 0.85; text-decoration: none; }
+
+    .btn-apk {
+      background-color: #3ddc84;
+      color: #0f0619;
+    }
+
+    .btn-ipa {
+      background-color: #a8a8b3;
+      color: #0f0619;
+    }
+
+    .btn-download.loading {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    .see-all {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-left: 0.25rem;
+    }
+
+    .see-all:hover { color: var(--accent); }
+
+    .no-release {
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    /* ── Install steps ── */
+    .install-method {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .install-method h3 {
+      margin-top: 0;
+    }
+
+    ol {
+      padding-left: 1.25rem;
+      color: var(--text);
+    }
+
+    ol li { margin-bottom: 0.3rem; }
+
+    .badge-recommended {
+      font-size: 0.7rem;
+      font-weight: 700;
+      background: var(--accent);
+      color: #0f0619;
+      border-radius: 3px;
+      padding: 0.15rem 0.45rem;
+      vertical-align: middle;
+      margin-left: 0.4rem;
+      font-family: 'Nunito', sans-serif;
+      letter-spacing: 0.03em;
+    }
+
+    .contact {
+      margin-top: 3rem;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .contact a {
+      color: #e879a0;
+      font-family: monospace;
+      font-size: 0.95rem;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark">
+    <a class="navbar-brand" href="#">PokeVoid Offline</a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav mr-auto">
+        <li class="nav-item">
+          <a class="nav-link active" href="https://void.scooom.xyz/">Home</a>
+        </li>
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" id="formsDropdown" role="button" data-toggle="dropdown">
+            Pokemon Forms
+          </a>
+          <div class="dropdown-menu" aria-labelledby="formsDropdown">
+            <a class="dropdown-item" href="https://void.scooom.xyz/gallery.html">Mod Glitch Forms</a>
+            <a class="dropdown-item" href="https://void.scooom.xyz/galleryCore.html">Core Glitches</a>
+            <a class="dropdown-item" href="https://void.scooom.xyz/gallerySmitty.html">SMITTY Pokemon</a>
+            <a class="dropdown-item" href="https://void.scooom.xyz/gallerySmittyForm.html">SMITTY Forms</a>
+          </div>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="https://void.scooom.xyz/gacha.html">Gacha Calendar</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="https://void.scooom.xyz/faq.html">FAQs</a>
+        </li>
+      </ul>
+      <a class="btn-nav-download" href="#downloads">Downloads</a>
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <div class="main-content">
+
+    <h1>PokeVoid Offline</h1>
+    <p>
+      Play PokeVoid on your phone — no internet required. This page provides the latest offline builds
+      for Android and iOS, along with instructions for getting them installed.
+    </p>
+    <p>
+      These builds are based on <a href="https://void.scooom.xyz/">PokeVoid</a> by smittynugget, packaged
+      as a native app using Capacitor so everything runs locally on your device.
+    </p>
+
+    <hr />
+
+    <!-- Downloads -->
+    <h2 id="downloads">Downloads</h2>
+    <div id="downloads">
+      <div class="release-meta" id="release-meta">
+        <span>Fetching latest release&hellip;</span>
+      </div>
+      <div class="download-buttons">
+        <a id="btn-apk" class="btn-download btn-apk loading" href="#">
+          <i class="fab fa-android"></i> Download APK
+        </a>
+        <a id="btn-ipa" class="btn-download btn-ipa loading" href="#">
+          <i class="fab fa-apple"></i> Download IPA
+        </a>
+        <a id="see-all" class="see-all" href="https://github.com/PokeVoid-Offline/releases/releases" target="_blank">
+          See all releases &rarr;
+        </a>
+      </div>
+      <p class="no-release" id="release-error" style="display:none;">
+        Could not load release information. <a href="https://github.com/PokeVoid-Offline/releases/releases">View releases on GitHub.</a>
+      </p>
+    </div>
+
+    <hr />
+
+    <!-- Android -->
+    <h2>Installing on Android</h2>
+    <p>Android requires allowing installs from unknown sources. You only need to do this once.</p>
+
+    <div class="install-method">
+      <h3>All Android Devices</h3>
+      <ol>
+        <li>Download the APK above.</li>
+        <li>Open the APK file from your downloads. If prompted, allow your browser or file manager to install unknown apps.</li>
+        <li>Tap <strong>Install</strong> and launch PokeVoid from your home screen.</li>
+      </ol>
+    </div>
+
+    <hr />
+
+    <!-- iOS -->
+    <h2>Installing on iOS</h2>
+    <p>
+      iOS does not allow installing apps outside the App Store without a sideloading tool.
+      Choose the method that works best for you below.
+    </p>
+
+    <div class="install-method">
+      <h3>SideStore + LiveContainer <span class="badge-recommended">Recommended</span></h3>
+      <ol>
+        <li>Install <a href="https://sidestore.io/" target="_blank">SideStore</a> on your device.</li>
+        <li>Inside SideStore, install <a href="https://github.com/khanhduytran0/LiveContainer" target="_blank">LiveContainer</a>.</li>
+        <li>Open LiveContainer and import the IPA downloaded above.</li>
+        <li>Launch PokeVoid from within LiveContainer — no Apple ID app limit consumed.</li>
+      </ol>
+    </div>
+
+    <div class="install-method">
+      <h3>AltStore</h3>
+      <ol>
+        <li>Install <a href="https://altstore.io/" target="_blank">AltStore</a> on your device via a PC/Mac.</li>
+        <li>Open AltStore on your iPhone/iPad.</li>
+        <li>Tap <strong>My Apps</strong> &rarr; <strong>+</strong> and select the downloaded IPA.</li>
+        <li>AltStore will sign and install the app. Refresh every 7 days to keep it active.</li>
+      </ol>
+    </div>
+
+    <div class="install-method">
+      <h3>Feather</h3>
+      <ol>
+        <li>Install <a href="https://github.com/khcrysalis/Feather" target="_blank">Feather</a> using your preferred method.</li>
+        <li>Open Feather and tap <strong>+</strong> to import the IPA.</li>
+        <li>Sign the app with your certificate and tap <strong>Install</strong>.</li>
+      </ol>
+    </div>
+
+    <div class="contact">
+      Questions? Contact <a href="https://discord.com/users/scooom">scooom</a> on Discord.
+    </div>
+
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.slim.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.6.2/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const REPO = 'PokeVoid-Offline/releases';
+
+    async function fetchRelease() {
+      try {
+        const res = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`);
+        if (!res.ok) throw new Error('No release found');
+        const data = await res.json();
+
+        const apk = data.assets.find(a => a.name.endsWith('.apk'));
+        const ipa = data.assets.find(a => a.name.endsWith('.ipa'));
+
+        const meta = document.getElementById('release-meta');
+        const date = new Date(data.published_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+        meta.innerHTML = `<span><strong style="color:var(--text)">${data.name}</strong></span><span>${date}</span>`;
+
+        const btnApk = document.getElementById('btn-apk');
+        if (apk) {
+          btnApk.href = apk.browser_download_url;
+          btnApk.classList.remove('loading');
+        } else {
+          btnApk.style.display = 'none';
+        }
+
+        const btnIpa = document.getElementById('btn-ipa');
+        if (ipa) {
+          btnIpa.href = ipa.browser_download_url;
+          btnIpa.classList.remove('loading');
+        } else {
+          btnIpa.style.display = 'none';
+        }
+
+      } catch (e) {
+        document.getElementById('release-meta').style.display = 'none';
+        document.getElementById('btn-apk').style.display = 'none';
+        document.getElementById('btn-ipa').style.display = 'none';
+        document.getElementById('see-all').style.display = 'none';
+        document.getElementById('release-error').style.display = 'block';
+      }
+    }
+
+    fetchRelease();
+  </script>
+
+</body>
+</html>
