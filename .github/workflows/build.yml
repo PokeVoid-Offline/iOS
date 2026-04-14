@@ -281,18 +281,18 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: windows-latest
-            platform: win
-            artifact: PokeVoidOffline-Windows
-            output: PokeVoidOffline-Windows.exe
+#          - os: windows-latest
+#            platform: win
+#            artifact: PokeVoidOffline-Windows
+#            output: PokeVoidOffline-Windows.exe
           - os: macos-latest
             platform: mac
             artifact: PokeVoidOffline-Mac
             output: PokeVoidOffline-Mac.dmg
-          - os: ubuntu-latest
-            platform: linux
-            artifact: PokeVoidOffline-Linux
-            output: PokeVoidOffline-Linux.AppImage
+#          - os: ubuntu-latest
+#            platform: linux
+#            artifact: PokeVoidOffline-Linux
+#            output: PokeVoidOffline-Linux.AppImage
     runs-on: ${{ matrix.os }}
 
     steps:
