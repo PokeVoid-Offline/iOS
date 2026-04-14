@@ -439,7 +439,9 @@ jobs:
 
       - name: Copy output (macOS)
         if: matrix.os == 'macos-latest'
-        run: cp pokevoid-src/electron-dist/*.dmg PokeVoidOffline-Mac.dmg
+        run: |
+          find . -name '*.dmg'
+          cp pokevoid-src/electron-dist/*.dmg PokeVoidOffline-Mac.dmg
 
       - name: Copy output (Linux)
         if: matrix.os == 'ubuntu-latest'
