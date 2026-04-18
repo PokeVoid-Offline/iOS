@@ -22,6 +22,6 @@ apply_patch() {
 # Post-build patches run after pnpm build, targeting dist/:
 apply_patch "notch-fix.js"
 # apply_patch "capacitor-browser.js"
-# Disable this patch for now, it may be causing a black screen
+# Disable this patch for now, it isn't working
 
 echo "All post-build patches applied successfully."
