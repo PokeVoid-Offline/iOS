@@ -116,7 +116,6 @@ jobs:
             "appName": "PokeVoid Offline",
             "webDir": "dist",
             "ios": {
-              "contentInset": "never",
               "scrollEnabled": false,
               "backgroundColor": "#000000",
               "allowsLinkPreview": false,
