@@ -279,7 +279,10 @@ jobs:
 
       - name: Fix Android edge-to-edge status bar overlap
         working-directory: pokevoid-src
-        run: find . -name MainActivity.java -print 
+        run: |
+          FILE=$(find . -name MainActivity.java -print);
+          echo $FILE;
+          cat $FILE;
 
       - name: Fix Android edge-to-edge status bar overlap
         working-directory: pokevoid-src
