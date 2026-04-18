@@ -241,7 +241,7 @@ jobs:
       - name: Install Capacitor
         working-directory: pokevoid-src
         run: |
-          pnpm add @capacitor/core @capacitor/cli @capacitor/android @capacitor/filesystem @capacitor/share @capawesome/capacitor-android-edge-to-edge-support
+          pnpm add @capacitor/core @capacitor/cli @capacitor/android @capacitor/filesystem @capacitor/share
 
       - name: Configure Capacitor
         working-directory: pokevoid-src
@@ -255,11 +255,6 @@ jobs:
               "allowMixedContent": true,
               "backgroundColor": "#000000",
               "orientation": "landscape"
-            },
-            "plugins": {
-              "EdgeToEdge": {
-                "backgroundColor": "#121212"
-              }
             }
           }
           CAPEOF
@@ -279,6 +274,51 @@ jobs:
           grep -q "WRITE_EXTERNAL_STORAGE" $MANIFEST || \
             sed -i 's|<application|<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />\n    <application|' $MANIFEST
 
+      - name: Fix Android edge-to-edge status bar overlap
+        working-directory: pokevoid-src
+        run: |
+          # On Android 15+ edge-to-edge is enforced by default, causing the
+          # WebView to draw behind the status bar. We fix this by patching
+          # MainActivity to set the status bar color and enable proper insets,
+          # without requiring any extra Capacitor plugins.
+          MAIN="android/app/src/main/java/xyz/scooom/pv/MainActivity.java"
+          cat > $MAIN << 'JAVAEOF'
+          package xyz.scooom.pv;
+
+          import android.os.Bundle;
+          import android.view.View;
+          import android.view.Window;
+          import android.view.WindowManager;
+          import androidx.core.view.WindowCompat;
+          import com.getcapacitor.BridgeActivity;
+
+          public class MainActivity extends BridgeActivity {
+            @Override
+            public void onCreate(Bundle savedInstanceState) {
+              super.onCreate(savedInstanceState);
+
+              Window window = getWindow();
+
+              // Allow drawing under system bars so Capacitor WebView
+              // can handle insets via CSS env(safe-area-inset-*)
+              WindowCompat.setDecorFitsSystemWindows(window, false);
+
+              // Keep the status bar visible but transparent so the
+              // WebView CSS padding pushes content below it
+              window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+              window.setStatusBarColor(android.graphics.Color.TRANSPARENT);
+
+              // Light status bar icons (dark icons on light background) —
+              // adjust if your game has a light background near the top
+              View decorView = window.getDecorView();
+              decorView.setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
+                View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+              );
+            }
+          }
+          JAVAEOF
+
       - name: Set app version
         working-directory: pokevoid-src
         run: |
@@ -289,20 +329,29 @@ jobs:
 
       - name: Copy app icon
         run: |
-          mkdir -p pokevoid-src/android/app/src/main/res/mipmap-mdpi
-          mkdir -p pokevoid-src/android/app/src/main/res/mipmap-hdpi
-          mkdir -p pokevoid-src/android/app/src/main/res/mipmap-xhdpi
-          mkdir -p pokevoid-src/android/app/src/main/res/mipmap-xxhdpi
-          mkdir -p pokevoid-src/android/app/src/main/res/mipmap-xxxhdpi
-
-          sudo apt-get update
+          sudo apt-get update -q
           sudo apt-get install -y imagemagick
 
-          convert appIcon.png -resize 48x48   pokevoid-src/android/app/src/main/res/mipmap-mdpi/ic_launcher.png
-          convert appIcon.png -resize 72x72   pokevoid-src/android/app/src/main/res/mipmap-hdpi/ic_launcher.png
-          convert appIcon.png -resize 96x96   pokevoid-src/android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
-          convert appIcon.png -resize 144x144 pokevoid-src/android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
-          convert appIcon.png -resize 192x192 pokevoid-src/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+          # Generate all required icon sizes
+          # mdpi=48, hdpi=72, xhdpi=96, xxhdpi=144, xxxhdpi=192
+          for density in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
+            dir="${density%%:*}"
+            size="${density##*:}"
+            mkdir -p pokevoid-src/android/app/src/main/res/mipmap-${dir}
+            # ic_launcher: the standard icon (legacy, used as fallback)
+            convert appIcon.png -resize ${size}x${size}               pokevoid-src/android/app/src/main/res/mipmap-${dir}/ic_launcher.png
+            # ic_launcher_round: round variant shown on some launchers
+            convert appIcon.png -resize ${size}x${size}               pokevoid-src/android/app/src/main/res/mipmap-${dir}/ic_launcher_round.png
+            # ic_launcher_foreground: used by adaptive icons (Android 8+)
+            # Size must be 108dp equivalent so foreground fills the safe zone
+            fgsize=$((size * 108 / 48))
+            convert appIcon.png -resize ${fgsize}x${fgsize}               pokevoid-src/android/app/src/main/res/mipmap-${dir}/ic_launcher_foreground.png
+          done
+
+          # Delete the adaptive icon XML directory so Android 8+ uses the
+          # plain PNGs instead of the default Capacitor adaptive icon which
+          # would otherwise override everything above.
+          rm -rf pokevoid-src/android/app/src/main/res/mipmap-anydpi-v26
 
       - name: Make Gradle wrapper executable
         run: chmod +x pokevoid-src/android/gradlew
