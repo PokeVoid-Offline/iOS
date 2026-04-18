@@ -2,14 +2,18 @@ name: Build PokeVoid IPA & APK
 
 on:
   workflow_dispatch:
+    inputs:
+      build_desktop:
+        description: 'Build desktop apps (Windows, macOS, Linux)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
 
 permissions:
   contents: write
-
-env:
-  # Set to 'true' to enable desktop builds (Windows, macOS, Linux).
-  # Set to 'false' to skip them and only produce IPA + APK.
-  BUILD_DESKTOP: 'false'
 
 jobs:
   # Prepare step - clone repo, apply patches, build once
@@ -315,7 +319,7 @@ jobs:
 
   # Build Desktop apps
   build-desktop:
-    if: env.BUILD_DESKTOP == 'true'
+    if: inputs.build_desktop == 'true'
     needs: prepare
     strategy:
       matrix:
@@ -523,28 +527,28 @@ jobs:
           path: ./
 
       - name: Download Windows build
-        if: env.BUILD_DESKTOP == 'true'
+        if: inputs.build_desktop == 'true'
         uses: actions/download-artifact@v4
         with:
           name: PokeVoidOffline-Windows
           path: ./
 
       - name: Download macOS build x64
-        if: env.BUILD_DESKTOP == 'true'
+        if: inputs.build_desktop == 'true'
         uses: actions/download-artifact@v4
         with:
           name: PokeVoidOffline-Mac
           path: ./
 
       - name: Download macOS build arm64
-        if: env.BUILD_DESKTOP == 'true'
+        if: inputs.build_desktop == 'true'
         uses: actions/download-artifact@v4
         with:
           name: PokeVoidOffline-Mac-arm64
           path: ./
 
       - name: Download Linux build
-        if: env.BUILD_DESKTOP == 'true'
+        if: inputs.build_desktop == 'true'
         uses: actions/download-artifact@v4
         with:
           name: PokeVoidOffline-Linux
@@ -557,7 +561,7 @@ jobs:
           APK_SIZE=$(wc -c < PokeVoidOffline.apk | numfmt --to=iec-i --suffix=B)
           echo "ipa_size=$IPA_SIZE" >> $GITHUB_OUTPUT
           echo "apk_size=$APK_SIZE" >> $GITHUB_OUTPUT
-          if [ "$BUILD_DESKTOP" = "true" ]; then
+          if [ "${{ inputs.build_desktop }}" = "true" ]; then
             WIN_SIZE=$(wc -c < PokeVoidOffline-Windows.exe | numfmt --to=iec-i --suffix=B)
             MAC_SIZE=$(wc -c < PokeVoidOffline-Mac.dmg | numfmt --to=iec-i --suffix=B)
             MAC_ARM64_SIZE=$(wc -c < PokeVoidOffline-Mac-arm64.dmg | numfmt --to=iec-i --suffix=B)
@@ -569,7 +573,7 @@ jobs:
           fi
 
       - name: Create Release (mobile only)
-        if: env.BUILD_DESKTOP != 'true'
+        if: inputs.build_desktop != 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ needs.prepare.outputs.version }}-${{ github.run_number }}
@@ -608,7 +612,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create Release (all platforms)
-        if: env.BUILD_DESKTOP == 'true'
+        if: inputs.build_desktop == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ needs.prepare.outputs.version }}-${{ github.run_number }}
