@@ -288,6 +288,9 @@ jobs:
           # Update namespace in build.gradle
           sed -i 's/namespace = "[^"]*"/namespace = "xyz.scooom.pv"/' android/app/build.gradle
 
+          # Update applicationId in build.gradle
+          sed -i 's/applicationId "[^"]*"/applicationId "xyz.scooom.pv"/' android/app/build.gradle
+
           # ---- Permissions ----
           MANIFEST="android/app/src/main/AndroidManifest.xml"
           grep -q "WRITE_EXTERNAL_STORAGE" $MANIFEST || \
