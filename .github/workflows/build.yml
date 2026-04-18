@@ -276,14 +276,6 @@ jobs:
           grep -q "WRITE_EXTERNAL_STORAGE" $MANIFEST || \
             sed -i 's|<application|<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />\n    <application|' $MANIFEST
 
-
-      - name: Fix Android edge-to-edge status bar overlap
-        working-directory: pokevoid-src
-        run: |
-          FILE=$(find . -name MainActivity.java -print);
-          echo $FILE;
-          cat $FILE;
-
       - name: Fix Android edge-to-edge status bar overlap
         working-directory: pokevoid-src
         run: |
@@ -291,9 +283,9 @@ jobs:
           # WebView to draw behind the status bar. We fix this by patching
           # MainActivity to set the status bar color and enable proper insets,
           # without requiring any extra Capacitor plugins.
-          MAIN="android/app/src/main/java/xyz/scooom/pv/MainActivity.java"
+          MAIN="android/app/src/main/java/com/pokevoid/app/MainActivity.java"
           cat > $MAIN << 'JAVAEOF'
-          package xyz.scooom.pv;
+          package com.pokevoid.app;
 
           import android.os.Bundle;
           import android.view.View;
