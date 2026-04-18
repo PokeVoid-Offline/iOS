@@ -37,5 +37,6 @@ apply_submodule_patch() {
 
 apply_patch "noZoom.js"
 apply_patch "remove-pokesave.js"
+apply_patch "pokevoid-capacitor-export-fix.js"
 
 echo "All patches applied successfully."

@@ -6,13 +6,8 @@ on:
 permissions:
   contents: write
 
-env:
-  # Set to 'true' to enable desktop builds (Windows, macOS, Linux).
-  # Set to 'false' to skip them and only produce IPA + APK.
-  BUILD_DESKTOP: 'false'
-
 jobs:
-  # Prepare step - clone repo, apply patches, build once
+  # Prepare step - clone repo and apply patches once
   prepare:
     runs-on: ubuntu-latest
     outputs:
@@ -65,9 +60,6 @@ jobs:
           VITE_BYPASS_LOGIN: '1'
         run: pnpm build
 
-      - name: Apply post-build patches
-        run: bash ${{ github.workspace }}/scripts/apply-post-build-patches.sh
-
       - name: Upload built source
         uses: actions/upload-artifact@v4
         with:
@@ -77,6 +69,7 @@ jobs:
 
   # Build iOS IPA
   build-ios:
+#    if: false
     needs: prepare
     runs-on: macos-latest
 
@@ -101,7 +94,7 @@ jobs:
       - name: Install Capacitor
         working-directory: pokevoid-src
         run: |
-          pnpm add @capacitor/core @capacitor/cli @capacitor/ios @capacitor/filesystem @capacitor/share @capacitor/status-bar
+          pnpm add @capacitor/core @capacitor/cli @capacitor/ios
 
       - name: Configure Capacitor
         working-directory: pokevoid-src
@@ -117,13 +110,6 @@ jobs:
               "backgroundColor": "#000000",
               "allowsLinkPreview": false,
               "allowsBackForwardNavigationGestures": false
-            },
-            "plugins": {
-              "StatusBar": {
-                "overlaysWebView": false,
-                "style": "DARK",
-                "backgroundColor": "#000000"
-              }
             }
           }
           CAPEOF
@@ -145,34 +131,16 @@ jobs:
       - name: Configure iOS app settings
         working-directory: pokevoid-src
         run: |
+          /usr/libexec/PlistBuddy -c "Delete :UISupportedInterfaceOrientations" ios/App/App/Info.plist || true
+          /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations array" ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations:0 string UIInterfaceOrientationLandscapeLeft" ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations:1 string UIInterfaceOrientationLandscapeRight" ios/App/App/Info.plist
           /usr/libexec/PlistBuddy -c "Add :UIStatusBarHidden bool true" ios/App/App/Info.plist || true
           /usr/libexec/PlistBuddy -c "Add :UIViewControllerBasedStatusBarAppearance bool false" ios/App/App/Info.plist || true
           /usr/libexec/PlistBuddy -c "Add :UIRequiresFullScreen bool true" ios/App/App/Info.plist || true
           /usr/libexec/PlistBuddy -c "Set :LSApplicationCategoryType public.app-category.games" ios/App/App/Info.plist || true
           /usr/libexec/PlistBuddy -c "Add :LSApplicationCategoryType string public.app-category.games" ios/App/App/Info.plist || true
           /usr/libexec/PlistBuddy -c "Add :UIHomeIndicatorAutoHidden bool true" ios/App/App/Info.plist || true
-          /usr/libexec/PlistBuddy -c "Add :NSDocumentsFolderUsageDescription string 'Required to save your exported game data file.'" ios/App/App/Info.plist || true
-          /usr/libexec/PlistBuddy -c "Add :UIFileSharingEnabled bool true" ios/App/App/Info.plist || true
-          /usr/libexec/PlistBuddy -c "Add :LSSupportsOpeningDocumentsInPlace bool true" ios/App/App/Info.plist || true
-
-      - name: Register .prsv UTI so iOS preserves the file extension
-        working-directory: pokevoid-src
-        run: |
-          /usr/libexec/PlistBuddy -c "Add :CFBundleDocumentTypes array" ios/App/App/Info.plist || true
-          /usr/libexec/PlistBuddy -c "Add :CFBundleDocumentTypes:0 dict" ios/App/App/Info.plist
-          /usr/libexec/PlistBuddy -c "Add :CFBundleDocumentTypes:0:CFBundleTypeName string PokeVoid Save Data" ios/App/App/Info.plist
-          /usr/libexec/PlistBuddy -c "Add :CFBundleDocumentTypes:0:LSItemContentTypes array" ios/App/App/Info.plist
-          /usr/libexec/PlistBuddy -c "Add :CFBundleDocumentTypes:0:LSItemContentTypes:0 string xyz.scooom.pv.prsv" ios/App/App/Info.plist
-          /usr/libexec/PlistBuddy -c "Add :CFBundleDocumentTypes:0:LSHandlerRank string Owner" ios/App/App/Info.plist
-          /usr/libexec/PlistBuddy -c "Add :UTExportedTypeDeclarations array" ios/App/App/Info.plist || true
-          /usr/libexec/PlistBuddy -c "Add :UTExportedTypeDeclarations:0 dict" ios/App/App/Info.plist
-          /usr/libexec/PlistBuddy -c "Add :UTExportedTypeDeclarations:0:UTTypeIdentifier string xyz.scooom.pv.prsv" ios/App/App/Info.plist
-          /usr/libexec/PlistBuddy -c "Add :UTExportedTypeDeclarations:0:UTTypeDescription string PokeVoid Save Data" ios/App/App/Info.plist
-          /usr/libexec/PlistBuddy -c "Add :UTExportedTypeDeclarations:0:UTTypeConformsTo array" ios/App/App/Info.plist
-          /usr/libexec/PlistBuddy -c "Add :UTExportedTypeDeclarations:0:UTTypeConformsTo:0 string public.data" ios/App/App/Info.plist
-          /usr/libexec/PlistBuddy -c "Add :UTExportedTypeDeclarations:0:UTTypeTagSpecification dict" ios/App/App/Info.plist
-          /usr/libexec/PlistBuddy -c "Add :UTExportedTypeDeclarations:0:UTTypeTagSpecification:public.filename-extension array" ios/App/App/Info.plist
-          /usr/libexec/PlistBuddy -c "Add :UTExportedTypeDeclarations:0:UTTypeTagSpecification:public.filename-extension:0 string prsv" ios/App/App/Info.plist
 
       - name: Copy app icon
         run: |
@@ -205,6 +173,7 @@ jobs:
 
   # Build Android APK
   build-android:
+#    if: false
     needs: prepare
     runs-on: ubuntu-latest
 
@@ -238,7 +207,7 @@ jobs:
       - name: Install Capacitor
         working-directory: pokevoid-src
         run: |
-          pnpm add @capacitor/core @capacitor/cli @capacitor/android @capacitor/filesystem @capacitor/share
+          pnpm add @capacitor/core @capacitor/cli @capacitor/android
 
       - name: Configure Capacitor
         working-directory: pokevoid-src
@@ -263,13 +232,6 @@ jobs:
       - name: Sync Capacitor
         working-directory: pokevoid-src
         run: npx cap sync android
-
-      - name: Add Android permissions for file sharing
-        working-directory: pokevoid-src
-        run: |
-          MANIFEST="android/app/src/main/AndroidManifest.xml"
-          grep -q "WRITE_EXTERNAL_STORAGE" $MANIFEST || \
-            sed -i 's|<application|<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />\n    <application|' $MANIFEST
 
       - name: Set app version
         working-directory: pokevoid-src
@@ -315,7 +277,6 @@ jobs:
 
   # Build Desktop apps
   build-desktop:
-    if: env.BUILD_DESKTOP == 'true'
     needs: prepare
     strategy:
       matrix:
@@ -503,10 +464,10 @@ jobs:
           path: ${{ matrix.output }}
           retention-days: 30
 
-  # Create release with all builds
+  # Create release with IPA, APK, and desktop builds
   release:
+#    if: false
     needs: [prepare, build-ios, build-android, build-desktop]
-    if: always() && needs.prepare.result == 'success' && needs.build-ios.result == 'success' && needs.build-android.result == 'success'
     runs-on: ubuntu-latest
 
     steps:
@@ -523,28 +484,24 @@ jobs:
           path: ./
 
       - name: Download Windows build
-        if: env.BUILD_DESKTOP == 'true'
         uses: actions/download-artifact@v4
         with:
           name: PokeVoidOffline-Windows
           path: ./
 
       - name: Download macOS build x64
-        if: env.BUILD_DESKTOP == 'true'
         uses: actions/download-artifact@v4
         with:
           name: PokeVoidOffline-Mac
           path: ./
 
       - name: Download macOS build arm64
-        if: env.BUILD_DESKTOP == 'true'
         uses: actions/download-artifact@v4
         with:
           name: PokeVoidOffline-Mac-arm64
           path: ./
 
       - name: Download Linux build
-        if: env.BUILD_DESKTOP == 'true'
         uses: actions/download-artifact@v4
         with:
           name: PokeVoidOffline-Linux
@@ -555,64 +512,22 @@ jobs:
         run: |
           IPA_SIZE=$(wc -c < PokeVoidOffline.ipa | numfmt --to=iec-i --suffix=B)
           APK_SIZE=$(wc -c < PokeVoidOffline.apk | numfmt --to=iec-i --suffix=B)
+          WIN_SIZE=$(wc -c < PokeVoidOffline-Windows.exe | numfmt --to=iec-i --suffix=B)
+          MAC_SIZE=$(wc -c < PokeVoidOffline-Mac.dmg | numfmt --to=iec-i --suffix=B)
+          MAC_ARM64_SIZE=$(wc -c < PokeVoidOffline-Mac-arm64.dmg | numfmt --to=iec-i --suffix=B)
+          LIN_SIZE=$(wc -c < PokeVoidOffline-Linux.AppImage | numfmt --to=iec-i --suffix=B)
           echo "ipa_size=$IPA_SIZE" >> $GITHUB_OUTPUT
           echo "apk_size=$APK_SIZE" >> $GITHUB_OUTPUT
-          if [ "$BUILD_DESKTOP" = "true" ]; then
-            WIN_SIZE=$(wc -c < PokeVoidOffline-Windows.exe | numfmt --to=iec-i --suffix=B)
-            MAC_SIZE=$(wc -c < PokeVoidOffline-Mac.dmg | numfmt --to=iec-i --suffix=B)
-            MAC_ARM64_SIZE=$(wc -c < PokeVoidOffline-Mac-arm64.dmg | numfmt --to=iec-i --suffix=B)
-            LIN_SIZE=$(wc -c < PokeVoidOffline-Linux.AppImage | numfmt --to=iec-i --suffix=B)
-            echo "win_size=$WIN_SIZE" >> $GITHUB_OUTPUT
-            echo "mac_size=$MAC_SIZE" >> $GITHUB_OUTPUT
-            echo "mac_arm64_size=$MAC_ARM64_SIZE" >> $GITHUB_OUTPUT
-            echo "lin_size=$LIN_SIZE" >> $GITHUB_OUTPUT
-          fi
+          echo "win_size=$WIN_SIZE" >> $GITHUB_OUTPUT
+          echo "mac_size=$MAC_SIZE" >> $GITHUB_OUTPUT
+          echo "mac_arm64_size=$MAC_ARM64_SIZE" >> $GITHUB_OUTPUT
+          echo "lin_size=$LIN_SIZE" >> $GITHUB_OUTPUT
 
-      - name: Create Release (mobile only)
-        if: env.BUILD_DESKTOP != 'true'
+      - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ needs.prepare.outputs.version }}-${{ github.run_number }}
-          name: PokeVoid Offline v${{ needs.prepare.outputs.version }} (Build ${{ github.run_number }})
-          body: |
-            ## PokeVoid Offline - Mobile Release
-
-            ### 📦 Downloads
-            - **iOS (IPA)**: `PokeVoidOffline.ipa` (${{ steps.file_sizes.outputs.ipa_size }})
-            - **Android (APK)**: `PokeVoidOffline.apk` (${{ steps.file_sizes.outputs.apk_size }})
-
-            ### 📱 Installation
-
-            #### iOS
-            - Use SideStore, LiveContainer, or your preferred sideloading method
-            - See [installation guide](https://github.com/PokeVoid-Offline/releases#installing-the-ipa)
-
-            #### Android
-            - Enable "Install from Unknown Sources" in Settings
-            - Download and install the APK
-            - Note: APK is debug-signed, you may need to allow installation
-
-            ### ℹ️ Info
-            - **Version**: ${{ needs.prepare.outputs.version }}
-            - **Build**: ${{ github.run_number }}
-            - **Based on**: [PokeVoid by smittynugget](https://github.com/smittynugget/pokevoid)
-
-            ### ⚠️ Notes
-            - Mobile builds are **unsigned/debug-signed** - for personal use only
-            - Fully offline - no internet required after installation
-            - Save files are stored locally on device
-          files: |
-            PokeVoidOffline.ipa
-            PokeVoidOffline.apk
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create Release (all platforms)
-        if: env.BUILD_DESKTOP == 'true'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ needs.prepare.outputs.version }}-${{ github.run_number }}
-          name: PokeVoid Offline v${{ needs.prepare.outputs.version }} (Build ${{ github.run_number }})
+          name: PokeVoidOffline v${{ needs.prepare.outputs.version }} (Build ${{ github.run_number }})
           body: |
             ## PokeVoid Offline - Multi-Platform Release
 
