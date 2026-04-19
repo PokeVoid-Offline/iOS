@@ -59,20 +59,18 @@ const STYLE_BLOCK = `
      * it unconditionally is safe — no visible effect on desktop/web.
      *
      * Portrait:  status bar is at the top — padding pushes canvas down.
-     * Landscape: on most devices the status bar is hidden or very thin
-     *            so env(safe-area-inset-top) will be 0 or negligible.
-     *            We still apply it to handle edge cases (e.g. Android
-     *            devices that show the status bar in landscape).
      */
-    body {
-      padding-top: env(safe-area-inset-top);
-      box-sizing: border-box;
-    }
-    /* Shrink the app container by the same amount so the canvas
-       doesn't overflow and cause a scrollbar */
-    #app {
-      min-height: calc(100dvh - env(safe-area-inset-top));
-    }
+    @media (orientation: portrait) {
+      body {
+        padding-top: env(safe-area-inset-top);
+        box-sizing: border-box;
+      }
+      /* Shrink the app container by the same amount so the canvas
+         doesn't overflow and cause a scrollbar */
+      #app {
+        min-height: calc(100dvh - env(safe-area-inset-top));
+      }
+}
   </style>`;
 
 const patched = src.replace("</head>", `${STYLE_BLOCK}\n</head>`);
