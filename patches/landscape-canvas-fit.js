@@ -2,30 +2,32 @@
 /**
  * Patch: landscape-canvas-fit.js
  *
- * Prevents the game canvas from being obscured by on-screen touch controls
- * in landscape orientation on mobile devices.
+ * Ensures the game canvas fits entirely on screen (like PokeRogue's letterbox),
+ * with black bars on the sides in landscape rather than content being cut off.
  *
- * Root cause:
- *   The game uses Phaser.Scale.FIT + CENTER_BOTH at a 1920×1080 (16:9) resolution.
- *   In landscape on a phone (also ~16:9), Phaser sizes the canvas to fill the full
- *   viewport height.  The touch controls (#dpad, #apad) are position:fixed and
- *   sit on top of the canvas — they don't push it up.  This means the bottom
- *   portion of the canvas (party row, action buttons, etc.) is hidden behind
- *   the controls.
+ * Root cause & geometry:
+ *   The game is 1920×1080 (16:9). Modern phones in landscape are ~2.17:1 (e.g.
+ *   iPhone 15 Pro: 852×393). Since the screen is WIDER than the game, Phaser's
+ *   FIT mode naturally letterboxes: canvas fills 100% of screen HEIGHT, with
+ *   black bars on the left and right. This is exactly what PokeRogue shows.
+ *   The touch controls (dpad left, apad right) sit inside those black bars and
+ *   never overlap game content. Perfect.
+ *
+ *   What breaks it — the notch-fix patch (runs before this one) adds:
+ *     body { padding-top: env(safe-area-inset-top); box-sizing: border-box; }
+ *   This shifts body content DOWN by the notch height (e.g. 47px on iPhone 14
+ *   Pro). Phaser uses window.innerHeight for its scale calculations, so it still
+ *   draws a canvas that is 100vh tall. But body is now shifted down by inset-top,
+ *   so the canvas bottom falls inset-top pixels BELOW the visible screen edge —
+ *   that much of the game is clipped off.
  *
  * Fix:
- *   Constrain #app to a max-height that leaves room for the controls layer,
- *   and ensure html/body don't scroll. Phaser's FIT mode will then scale the
- *   canvas down to fit within that reduced height, keeping all game content
- *   fully visible above the controls.
- *
- *   We use a CSS custom property (--controls-height-landscape) so the value is
- *   easy to tweak.  The default (10vh) is enough to clear the dpad/apad buttons
- *   in landscape without wasting excessive screen space.
- *
- *   We also fix a secondary issue: in portrait mode the notch-fix already adds
- *   padding-top to body, but html and body were not explicitly set to 100% height,
- *   which could cause subtle layout shifts.  We normalise that here.
+ *   Rather than fighting body padding, we take #app out of normal flow entirely
+ *   by making it position:fixed. It then fills the true viewport independently of
+ *   body padding, with explicit insets applied via top/bottom so the status bar
+ *   and home-bar areas are respected. Phaser measures #app's clientHeight which
+ *   now correctly reflects the available space, so FIT mode scales the canvas to
+ *   fit fully on screen with letterbox bars on the sides — identical to PokeRogue.
  *
  * Targets: pokevoid-src/dist/index.html
  */
@@ -43,10 +45,10 @@ if (!fs.existsSync(TARGET)) {
 
 let src = fs.readFileSync(TARGET, "utf8");
 
-const MARKER = "capacitor-landscape-canvas-fix";
+const MARKER = "capacitor-canvas-fit-fix";
 
 if (src.includes(MARKER)) {
-  console.log("Landscape canvas fix already present, skipping.");
+  console.log("Canvas fit fix already present, skipping.");
   process.exit(0);
 }
 
@@ -58,53 +60,43 @@ if (!src.includes("</head>")) {
 const STYLE_BLOCK = `
   <style id="${MARKER}">
     /*
-     * Landscape canvas overflow fix.
+     * Canvas fit fix.
      *
-     * Phaser FIT mode scales the canvas to fill the full viewport height in
-     * landscape (phone aspect ratios are close to 16:9).  Touch controls are
-     * position:fixed and overlap the bottom of the canvas.
+     * Takes #app out of normal document flow so it fills the true viewport
+     * regardless of body padding-top added by the notch-fix patch.
      *
-     * By capping #app's height to (100dvh - controls clearance) we give Phaser
-     * a smaller container to FIT into, so it scales the canvas down just enough
-     * for the controls not to cover any game content.
+     * top: env(safe-area-inset-top)    — clears the status bar / notch
+     * bottom: env(safe-area-inset-bottom) — clears the home indicator
+     * left/right: 0                    — full width
      *
-     * --canvas-controls-clearance: how many px to reserve at the bottom for
-     *   the dpad/apad buttons.  Tune this if controls still clip content.
-     *   In landscape, --controls-size is 20vh, buttons sit at bottom:1rem,
-     *   so ~calc(20vh + 1.5rem) is the safe floor. We use 22vh to add margin.
+     * Phaser measures #app.clientHeight and scales its canvas to FIT inside it.
+     * Because modern phones in landscape are wider than 16:9, FIT mode produces
+     * natural black bars on the sides — the controls sit in those bars and never
+     * overlap game content, matching PokeRogue's layout exactly.
      */
-    @media (orientation: landscape) {
-      :root {
-        --canvas-controls-clearance: 22vh;
-      }
-
-      html, body {
-        height: 100%;
-        overflow: hidden;
-      }
-
-      #app {
-        height: calc(100dvh - var(--canvas-controls-clearance));
-        max-height: calc(100dvh - var(--canvas-controls-clearance));
-        overflow: hidden;
-        /* Keep Phaser's canvas centred horizontally */
-        display: flex;
-        justify-content: center;
-        align-items: flex-start;
-      }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
     }
 
-    /*
-     * Portrait: ensure html/body fill the screen properly so the notch-fix
-     * padding-top from the earlier patch doesn't cause a scrollbar.
-     */
-    @media (orientation: portrait) {
-      html, body {
-        height: 100%;
-        overflow: hidden;
-      }
+    #app {
+      position: fixed;
+      top: env(safe-area-inset-top, 0px);
+      bottom: env(safe-area-inset-bottom, 0px);
+      left: 0;
+      right: 0;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
     }
   </style>`;
+
+// Remove the old marker if the previous (broken) version was already applied.
+src = src.replace(/<style id="capacitor-landscape-canvas-fix">[\s\S]*?<\/style>\s*/g, "");
 
 const patched = src.replace("</head>", `${STYLE_BLOCK}\n</head>`);
 
@@ -114,5 +106,5 @@ if (patched === src) {
 }
 
 fs.writeFileSync(TARGET, patched, "utf8");
-console.log(`Injected landscape canvas fix into ${TARGET}`);
-console.log("Landscape canvas fit fix applied successfully.");
+console.log(`Injected canvas fit fix into ${TARGET}`);
+console.log("Canvas fit fix applied successfully.");
