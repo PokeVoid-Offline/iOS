@@ -1,4 +1,4 @@
-name: Build PokeVoid IPA & APK
+name: Build PokeVoid IPA & APK (Old App ID)
 
 on:
   workflow_dispatch:
