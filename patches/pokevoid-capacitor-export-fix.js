@@ -129,6 +129,7 @@ const REPLACEMENT = `                const cap = (window as any).Capacitor;
                         path: \`Download/PokeVoid/\${downloadName}\`,
                         data: base64,
                         directory: "EXTERNAL_STORAGE",
+                        recursive: true,
                       }).then(() => {
                         removeOverlay();
                         // Show brief confirmation
