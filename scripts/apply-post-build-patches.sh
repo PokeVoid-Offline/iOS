@@ -23,6 +23,6 @@ apply_patch() {
 apply_patch "notch-fix.js"
 apply_patch "capacitor-browser.js"
 apply_patch "champion-select-c-button.js"
-#apply_patch "landscape-canvas-fit.js"
+apply_patch "landscape-canvas-fit.js"
 
 echo "All post-build patches applied successfully."
