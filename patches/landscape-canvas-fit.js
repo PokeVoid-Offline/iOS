@@ -57,10 +57,6 @@ if (!src.includes("</head>")) {
   process.exit(1);
 }
 
-// Clean up any previous versions of this patch.
-src = src.replace(/<style id="capacitor-landscape-canvas-fix">[\s\S]*?<\/style>\s*/g, "");
-src = src.replace(/<style id="capacitor-canvas-fit-fix">[\s\S]*?<\/style>\s*/g, "");
-
 const STYLE_BLOCK = `
   <style id="${MARKER}">
     /*
