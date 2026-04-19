@@ -151,7 +151,7 @@ const REPLACEMENT = `                const cap = (window as any).Capacitor;
                         document.body.appendChild(toast);
                         setTimeout(() => toast.parentNode?.removeChild(toast), 3500);
                       }).catch((err: any) => {
-                        console.error("Android export failed:", err);
+                        alert("Android export failed:" + err);
                         btn.disabled = false;
                         btn.textContent = "💾 Save to Downloads";
                       });
