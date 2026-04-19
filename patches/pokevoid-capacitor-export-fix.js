@@ -124,7 +124,7 @@ const REPLACEMENT = `                const cap = (window as any).Capacitor;
                       // Android: write directly to the public Downloads folder.
                       // Skipping the share sheet because Android doesn't know the
                       // .prsv file type, so it only shows useless options like Print.
-                      await Filesystem.requestPermissions();
+                      Filesystem.requestPermissions();
                       Filesystem.writeFile({
                         path: \`Download/PokeVoid/\${downloadName}\`,
                         data: base64,
