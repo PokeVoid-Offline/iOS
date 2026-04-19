@@ -77,7 +77,14 @@ const STYLE_BLOCK = `
      */
     @media (orientation: landscape) {
       #app {
-        min-height: calc(100dvh);
+        min-height: calc(100dvh) !important;
+        max-height: calc(100dvh) !important;
+        height: calc(100dvh) !important;
+      }
+
+      body {
+        padding-top: 0 !important;
+        box-sizing: border-box;
       }
     }
   </style>`;
