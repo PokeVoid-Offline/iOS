@@ -2,32 +2,28 @@
 /**
  * Patch: landscape-canvas-fit.js
  *
- * Ensures the game canvas fits entirely on screen (like PokeRogue's letterbox),
- * with black bars on the sides in landscape rather than content being cut off.
+ * Fixes the game canvas being clipped at the bottom in landscape orientation.
  *
- * Root cause & geometry:
- *   The game is 1920×1080 (16:9). Modern phones in landscape are ~2.17:1 (e.g.
- *   iPhone 15 Pro: 852×393). Since the screen is WIDER than the game, Phaser's
- *   FIT mode naturally letterboxes: canvas fills 100% of screen HEIGHT, with
- *   black bars on the left and right. This is exactly what PokeRogue shows.
- *   The touch controls (dpad left, apad right) sit inside those black bars and
- *   never overlap game content. Perfect.
- *
- *   What breaks it — the notch-fix patch (runs before this one) adds:
+ * Root cause:
+ *   The notch-fix patch (which runs before this one) unconditionally adds:
  *     body { padding-top: env(safe-area-inset-top); box-sizing: border-box; }
- *   This shifts body content DOWN by the notch height (e.g. 47px on iPhone 14
- *   Pro). Phaser uses window.innerHeight for its scale calculations, so it still
- *   draws a canvas that is 100vh tall. But body is now shifted down by inset-top,
- *   so the canvas bottom falls inset-top pixels BELOW the visible screen edge —
- *   that much of the game is clipped off.
+ *   This is correct in portrait — it pushes the canvas below the notch/status bar.
+ *
+ *   In landscape, the notch/Dynamic Island inset moves to the LEFT and RIGHT sides
+ *   of the screen — NOT the top. env(safe-area-inset-top) is 0 (or near 0) in
+ *   landscape on virtually all iOS and Android devices. Despite this, some devices
+ *   still report a small non-zero inset-top in landscape, and that padding-top
+ *   shifts the body down — clipping the canvas bottom off screen.
+ *
+ *   Additionally, the game is 1920x1080 (16:9) and modern phones in landscape are
+ *   ~2.17:1 (wider than 16:9). Phaser FIT mode therefore fits the canvas to the
+ *   screen HEIGHT with natural black bars left and right — exactly like PokeRogue.
+ *   The dpad sits in the left black bar, apad in the right. This works perfectly
+ *   as long as body padding-top is 0 in landscape.
  *
  * Fix:
- *   Rather than fighting body padding, we take #app out of normal flow entirely
- *   by making it position:fixed. It then fills the true viewport independently of
- *   body padding, with explicit insets applied via top/bottom so the status bar
- *   and home-bar areas are respected. Phaser measures #app's clientHeight which
- *   now correctly reflects the available space, so FIT mode scales the canvas to
- *   fit fully on screen with letterbox bars on the sides — identical to PokeRogue.
+ *   A single CSS rule resetting body padding-top to 0 in landscape only.
+ *   Portrait behaviour is completely unchanged.
  *
  * Targets: pokevoid-src/dist/index.html
  */
@@ -57,46 +53,30 @@ if (!src.includes("</head>")) {
   process.exit(1);
 }
 
+// Clean up old broken versions of this patch if present.
+src = src.replace(/<style id="capacitor-landscape-canvas-fix">[\s\S]*?<\/style>\s*/g, "");
+src = src.replace(/<style id="capacitor-canvas-fit-fix">[\s\S]*?<\/style>\s*/g, "");
+
 const STYLE_BLOCK = `
   <style id="${MARKER}">
     /*
-     * Canvas fit fix.
+     * In landscape, reset the body padding-top that the notch-fix patch adds.
      *
-     * Takes #app out of normal document flow so it fills the true viewport
-     * regardless of body padding-top added by the notch-fix patch.
+     * Portrait:  env(safe-area-inset-top) correctly pushes content below the
+     *            notch/status bar — the notch-fix padding-top is correct there.
      *
-     * top: env(safe-area-inset-top)    — clears the status bar / notch
-     * bottom: env(safe-area-inset-bottom) — clears the home indicator
-     * left/right: 0                    — full width
-     *
-     * Phaser measures #app.clientHeight and scales its canvas to FIT inside it.
-     * Because modern phones in landscape are wider than 16:9, FIT mode produces
-     * natural black bars on the sides — the controls sit in those bars and never
-     * overlap game content, matching PokeRogue's layout exactly.
+     * Landscape: the notch inset moves to the sides (left/right), not the top.
+     *            Any non-zero padding-top shifts the canvas down and clips its
+     *            bottom off screen. Resetting to 0 lets Phaser FIT mode use the
+     *            full viewport height, producing natural black bars on the sides
+     *            where the touch controls sit — matching PokeRogue's layout.
      */
-    html, body {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-    }
-
-    #app {
-      position: fixed;
-      top: env(safe-area-inset-top, 0px);
-      bottom: env(safe-area-inset-bottom, 0px);
-      left: 0;
-      right: 0;
-      overflow: hidden;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+    @media (orientation: landscape) {
+      body {
+        padding-top: 0 !important;
+      }
     }
   </style>`;
-
-// Remove the old marker if the previous (broken) version was already applied.
-src = src.replace(/<style id="capacitor-landscape-canvas-fix">[\s\S]*?<\/style>\s*/g, "");
 
 const patched = src.replace("</head>", `${STYLE_BLOCK}\n</head>`);
 
